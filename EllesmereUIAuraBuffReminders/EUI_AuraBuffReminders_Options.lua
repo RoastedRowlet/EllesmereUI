@@ -25,6 +25,13 @@ initFrame:SetScript("OnEvent", function(self)
     if not EllesmereUI or not EllesmereUI.RegisterModule then return end
     local PP = EllesmereUI.PanelPP
 
+    local function GetABROptOutline()
+        return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+    end
+    local function GetABROptUseShadow()
+        return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+    end
+
     ---------------------------------------------------------------------------
     --  DB helpers
     ---------------------------------------------------------------------------
@@ -247,7 +254,8 @@ initFrame:SetScript("OnEvent", function(self)
                 local textSize = d and d.textSize or 11
                 local textXOff = d and d.textXOffset or 0
                 local textYOff = d and d.textYOffset or -2
-                btn._text:SetFont(fontPath, textSize, "")
+                btn._text:SetFont(fontPath, textSize, GetABROptOutline())
+                if GetABROptUseShadow() then btn._text:SetShadowOffset(1, -1) else btn._text:SetShadowOffset(0, 0) end
                 btn._text:ClearAllPoints()
                 btn._text:SetPoint("TOP", btn, "BOTTOM", textXOff, textYOff)
                 btn._text:SetTextColor(tc.r, tc.g, tc.b, 1)
@@ -477,8 +485,8 @@ initFrame:SetScript("OnEvent", function(self)
             local textYOff = d and d.textYOffset or -2
             local text = btn:CreateFontString(nil, "OVERLAY")
             text:SetPoint("TOP", btn, "BOTTOM", textXOff, textYOff)
-            text:SetFont(fontPath, textSize, "")
-            text:SetShadowOffset(1, -1)
+            text:SetFont(fontPath, textSize, GetABROptOutline())
+            if GetABROptUseShadow() then text:SetShadowOffset(1, -1) else text:SetShadowOffset(0, 0) end
             text:SetTextColor(tc.r, tc.g, tc.b, 1)
             text:SetText(iconData.label or "")
             if not showText then text:Hide() end
@@ -1365,7 +1373,7 @@ initFrame:SetScript("OnEvent", function(self)
         EllesmereUI.MakeBorder(zoneDDBtn, 1, 1, 1, 0.20, EllesmereUI.PanelPP)
 
         local zoneDDLbl = zoneDDBtn:CreateFontString(nil, "OVERLAY")
-        zoneDDLbl:SetFont(fontPath, 13, "")
+        zoneDDLbl:SetFont(fontPath, 13, GetABROptOutline())
         zoneDDLbl:SetTextColor(1, 1, 1, 0.50)
         zoneDDLbl:SetMaxLines(1)
         zoneDDLbl:SetJustifyH("LEFT")
@@ -1437,7 +1445,7 @@ initFrame:SetScript("OnEvent", function(self)
             item._cbCheck = cbCheck
 
             local lbl = item:CreateFontString(nil, "OVERLAY")
-            lbl:SetFont(fontPath, 11, "")
+            lbl:SetFont(fontPath, 11, GetABROptOutline())
             lbl:SetTextColor(0.75, 0.75, 0.78, 1)
             lbl:SetPoint("LEFT", cb, "RIGHT", 8, 0)
             lbl:SetPoint("RIGHT", item, "RIGHT", -8, 0)
@@ -1550,7 +1558,7 @@ initFrame:SetScript("OnEvent", function(self)
 
         -- Class Talent label + dropdown
         local classLabel = talentRow:CreateFontString(nil, "OVERLAY")
-        classLabel:SetFont(fontPath, 11, "")
+        classLabel:SetFont(fontPath, 11, GetABROptOutline())
         classLabel:SetTextColor(EllesmereUI.TEXT_SECTION_R or 0.45, EllesmereUI.TEXT_SECTION_G or 0.50, EllesmereUI.TEXT_SECTION_B or 0.55, EllesmereUI.TEXT_SECTION_A or 1)
         PP.Point(classLabel, "TOP", talentRow, "TOPLEFT", talentStartX + TALENT_DD_W / 2, 0)
         classLabel:SetText("Class Talent")
@@ -1579,7 +1587,7 @@ initFrame:SetScript("OnEvent", function(self)
 
         -- Spec Talent label + dropdown
         local specLabel = talentRow:CreateFontString(nil, "OVERLAY")
-        specLabel:SetFont(fontPath, 11, "")
+        specLabel:SetFont(fontPath, 11, GetABROptOutline())
         specLabel:SetTextColor(EllesmereUI.TEXT_SECTION_R or 0.45, EllesmereUI.TEXT_SECTION_G or 0.50, EllesmereUI.TEXT_SECTION_B or 0.55, EllesmereUI.TEXT_SECTION_A or 1)
         PP.Point(specLabel, "TOP", talentRow, "TOPLEFT", talentStartX + TALENT_DD_W + TALENT_GAP_X + TALENT_DD_W / 2, 0)
         specLabel:SetText("Spec Talent")
@@ -1628,7 +1636,7 @@ initFrame:SetScript("OnEvent", function(self)
 
         local addBtnText = addBtn:CreateFontString(nil, "OVERLAY")
         addBtnText:SetPoint("CENTER")
-        addBtnText:SetFont(fontPath, 13, "")
+        addBtnText:SetFont(fontPath, 13, GetABROptOutline())
         addBtnText:SetTextColor(eg.r, eg.g, eg.b, 0.7)
         addBtnText:SetText("Add Reminder")
 
@@ -1730,7 +1738,7 @@ initFrame:SetScript("OnEvent", function(self)
                 PP.Point(div, "TOP", emptyRow, "TOP", 0, 0)
                 PP.Point(div, "BOTTOM", emptyRow, "BOTTOM", 0, 0)
                 local emptyFS = emptyRow:CreateFontString(nil, "OVERLAY")
-                emptyFS:SetFont(fontPath, 13, "")
+                emptyFS:SetFont(fontPath, 13, GetABROptOutline())
                 emptyFS:SetTextColor(0.5, 0.5, 0.5, 1)
                 emptyFS:SetPoint("CENTER")
                 emptyFS:SetText("No talent reminders configured")
@@ -1805,7 +1813,7 @@ initFrame:SetScript("OnEvent", function(self)
                     zoneStr = reminder.zoneName or "Unknown"
                 end
                 local zoneFS = row:CreateFontString(nil, "OVERLAY")
-                zoneFS:SetFont(fontPath, 14, "")
+                zoneFS:SetFont(fontPath, 14, GetABROptOutline())
                 zoneFS:SetTextColor(1, 1, 1, 1)
                 zoneFS:SetPoint("LEFT", delBtn, "RIGHT", 6, 0)
                 zoneFS:SetJustifyH("LEFT")
@@ -1815,7 +1823,7 @@ initFrame:SetScript("OnEvent", function(self)
                 -- Talent name + icon (right portion of left half, anchored to center)
                 local spellName = reminder.spellName or "Unknown"
                 local spellFS = row:CreateFontString(nil, "OVERLAY")
-                spellFS:SetFont(fontPath, 14, "")
+                spellFS:SetFont(fontPath, 14, GetABROptOutline())
                 spellFS:SetTextColor(1, 1, 1, 1)
                 spellFS:SetJustifyH("RIGHT")
                 spellFS:SetWordWrap(false)
@@ -1844,7 +1852,7 @@ initFrame:SetScript("OnEvent", function(self)
                 toggleHit:SetFrameLevel(row:GetFrameLevel() + 3)
 
                 local toggleLabel = row:CreateFontString(nil, "OVERLAY")
-                toggleLabel:SetFont(fontPath, 14, "")
+                toggleLabel:SetFont(fontPath, 14, GetABROptOutline())
                 toggleLabel:SetPoint("LEFT", row, "CENTER", SIDE_PAD, 0)
                 toggleLabel:SetText("Show 'Not Needed' Reminder")
 

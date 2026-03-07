@@ -39,6 +39,13 @@ initFrame:SetScript("OnEvent", function(self)
     -- Inline text input helper (no W:InputBox exists)
     local FONT_PATH = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("cdm"))
         or "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.TTF"
+
+    local function GetCDMOptOutline()
+        return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+    end
+    local function GetCDMOptUseShadow()
+        return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+    end
     local function MakeTextInput(parent, label, yOffset, getValue, setValue)
         local ROW_H = 50
         local frame = CreateFrame("Frame", nil, parent)
@@ -46,7 +53,7 @@ initFrame:SetScript("OnEvent", function(self)
         frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
 
         local lbl = frame:CreateFontString(nil, "OVERLAY")
-        lbl:SetFont(FONT_PATH, 12, "")
+        lbl:SetFont(FONT_PATH, 12, GetCDMOptOutline())
         lbl:SetTextColor(0.7, 0.7, 0.7, 1)
         lbl:SetPoint("TOPLEFT", 20, -6)
         lbl:SetText(label)
@@ -54,7 +61,7 @@ initFrame:SetScript("OnEvent", function(self)
         local box = CreateFrame("EditBox", nil, frame)
         box:SetSize(parent:GetWidth() - 44, 22)
         box:SetPoint("TOPLEFT", 22, -22)
-        box:SetFont(FONT_PATH, 12, "")
+        box:SetFont(FONT_PATH, 12, GetCDMOptOutline())
         box:SetTextColor(1, 1, 1, 1)
         box:SetAutoFocus(false)
         box:SetMaxLetters(200)
@@ -259,7 +266,7 @@ initFrame:SetScript("OnEvent", function(self)
 
             -- Label
             local lbl = item:CreateFontString(nil, "OVERLAY")
-            lbl:SetFont(FONT_PATH, 11, "")
+            lbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
             lbl:SetPoint("LEFT", cb, "RIGHT", 6, 0)
             lbl:SetPoint("RIGHT", ico, "LEFT", -4, 0)
             lbl:SetJustifyH("LEFT")
@@ -656,7 +663,7 @@ initFrame:SetScript("OnEvent", function(self)
             hintFrame:SetSize(parent:GetWidth(), 40)
             hintFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
             local hintText = hintFrame:CreateFontString(nil, "OVERLAY")
-            hintText:SetFont(FONT_PATH, 12, "")
+            hintText:SetFont(FONT_PATH, 12, GetCDMOptOutline())
             hintText:SetTextColor(0.5, 0.5, 0.5, 1)
             hintText:SetPoint("CENTER")
             hintText:SetText("Left click a button to edit an existing glow, right click to add a new glow")
@@ -674,7 +681,7 @@ initFrame:SetScript("OnEvent", function(self)
                 emptyFrame:SetSize(parent:GetWidth(), 30)
                 emptyFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
                 local emptyText = emptyFrame:CreateFontString(nil, "OVERLAY")
-                emptyText:SetFont(FONT_PATH, 12, "")
+                emptyText:SetFont(FONT_PATH, 12, GetCDMOptOutline())
                 emptyText:SetTextColor(0.5, 0.5, 0.5, 1)
                 emptyText:SetPoint("LEFT", 22, 0)
                 emptyText:SetText("No buffs assigned. Right click a button in the preview to assign buffs.")
@@ -921,7 +928,7 @@ initFrame:SetScript("OnEvent", function(self)
             ico:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
             local lbl = item:CreateFontString(nil, "OVERLAY")
-            lbl:SetFont(FONT_PATH, 11, "")
+            lbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
             lbl:SetPoint("LEFT", 8, 0)
             lbl:SetPoint("RIGHT", ico, "LEFT", -4, 0)
             lbl:SetJustifyH("LEFT")
@@ -1076,7 +1083,7 @@ initFrame:SetScript("OnEvent", function(self)
             ddBg:SetAllPoints(); ddBg:SetColorTexture(mBgR, mBgG, mBgB, mBgA)
             local ddBrd = EllesmereUI.MakeBorder(ddBtn, 1, 1, 1, mBrdA, EllesmereUI.PanelPP)
             local ddLbl = ddBtn:CreateFontString(nil, "OVERLAY")
-            ddLbl:SetFont(FONT_PATH, 13, "")
+            ddLbl:SetFont(FONT_PATH, 13, GetCDMOptOutline())
             ddLbl:SetAlpha(mTxtA)
             ddLbl:SetJustifyH("LEFT")
             ddLbl:SetWordWrap(false); ddLbl:SetMaxLines(1)
@@ -1125,7 +1132,7 @@ initFrame:SetScript("OnEvent", function(self)
                     item:SetFrameLevel(menu:GetFrameLevel() + 2)
 
                     local iLbl = item:CreateFontString(nil, "OVERLAY")
-                    iLbl:SetFont(FONT_PATH, 11, "")
+                    iLbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
                     iLbl:SetTextColor(tDimR, tDimG, tDimB, tDimA)
                     iLbl:SetJustifyH("LEFT")
                     iLbl:SetWordWrap(false); iLbl:SetMaxLines(1)
@@ -1196,7 +1203,7 @@ initFrame:SetScript("OnEvent", function(self)
                 addItem:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -1, -mH)
                 addItem:SetFrameLevel(menu:GetFrameLevel() + 2)
                 local addLbl = addItem:CreateFontString(nil, "OVERLAY")
-                addLbl:SetFont(FONT_PATH, 11, "")
+                addLbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
                 addLbl:SetPoint("LEFT", addItem, "LEFT", 10, 0)
                 addLbl:SetJustifyH("LEFT")
                 addLbl:SetText("+ Add New Bar")
@@ -1284,8 +1291,8 @@ initFrame:SetScript("OnEvent", function(self)
 
                 if bd.showTimer then
                     local timer = pvBar:CreateFontString(nil, "OVERLAY")
-                    timer:SetFont(FONT_PATH, bd.timerSize or 11, "")
-                    timer:SetShadowOffset(1, -1); timer:SetShadowColor(0, 0, 0, 1)
+                    timer:SetFont(FONT_PATH, bd.timerSize or 11, GetCDMOptOutline())
+                    if GetCDMOptUseShadow() then timer:SetShadowOffset(1, -1) else timer:SetShadowOffset(0, 0) end; timer:SetShadowColor(0, 0, 0, 1)
                     timer:SetTextColor(1, 1, 1, 0.9)
                     timer:SetPoint("RIGHT", pvBar, "RIGHT", -8 + (bd.timerX or 0), bd.timerY or 0)
                     timer:SetText("3.2")
@@ -1294,8 +1301,8 @@ initFrame:SetScript("OnEvent", function(self)
                 -- Spell name
                 if bd.showName ~= false then
                     local nameFs = pvBar:CreateFontString(nil, "OVERLAY")
-                    nameFs:SetFont(FONT_PATH, bd.nameSize or 11, "")
-                    nameFs:SetShadowOffset(1, -1); nameFs:SetShadowColor(0, 0, 0, 1)
+                    nameFs:SetFont(FONT_PATH, bd.nameSize or 11, GetCDMOptOutline())
+                    if GetCDMOptUseShadow() then nameFs:SetShadowOffset(1, -1) else nameFs:SetShadowOffset(0, 0) end; nameFs:SetShadowColor(0, 0, 0, 1)
                     nameFs:SetTextColor(1, 1, 1, 0.9)
                     nameFs:SetPoint("LEFT", pvBar, "LEFT", 8 + (bd.nameX or 0), bd.nameY or 0)
                     if bd.spellID and bd.spellID > 0 then
@@ -1312,7 +1319,7 @@ initFrame:SetScript("OnEvent", function(self)
                     -- No name text, but still show hint if no spell assigned
                     if not bd.spellID or bd.spellID == 0 then
                         local nameFs = pvBar:CreateFontString(nil, "OVERLAY")
-                        nameFs:SetFont(FONT_PATH, 11, "")
+                        nameFs:SetFont(FONT_PATH, 11, GetCDMOptOutline())
                         nameFs:SetTextColor(1, 1, 1, 1)
                         nameFs:SetPoint("CENTER", pvBar, "CENTER", 0, 0)
                         nameFs:SetJustifyH("CENTER")
@@ -1393,7 +1400,7 @@ initFrame:SetScript("OnEvent", function(self)
                 end)
             else
                 local hint = pvFrame:CreateFontString(nil, "OVERLAY")
-                hint:SetFont(FONT_PATH, 12, "")
+                hint:SetFont(FONT_PATH, 12, GetCDMOptOutline())
                 hint:SetTextColor(1, 1, 1, 0.35)
                 hint:SetPoint("CENTER")
                 hint:SetText("Use the dropdown above to add a new bar")
@@ -1931,8 +1938,8 @@ initFrame:SetScript("OnEvent", function(self)
             local fontPath = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("cdm")) or STANDARD_TEXT_FONT
             for _, region in ipairs({ slot._previewCD:GetRegions() }) do
                 if region:GetObjectType() == "FontString" then
-                    region:SetFont(fontPath, fSize, "")
-                    region:SetShadowOffset(1, -1)
+                    region:SetFont(fontPath, fSize, GetCDMOptOutline())
+                    if GetCDMOptUseShadow() then region:SetShadowOffset(1, -1) else region:SetShadowOffset(0, 0) end
                     region:SetShadowColor(0, 0, 0, 1)
                     break
                 end
@@ -2079,7 +2086,7 @@ initFrame:SetScript("OnEvent", function(self)
                     end
                 elseif not sp.isKnown then
                     itemsDisabled[#itemsDisabled + 1] = sp
-                elseif sp.isDisplayed or (isCustomBar and sp.isKnown) then
+                elseif sp.isDisplayed then
                     itemsDisplayed[#itemsDisplayed + 1] = sp
                 else
                     itemsOther[#itemsOther + 1] = sp
@@ -2104,7 +2111,7 @@ initFrame:SetScript("OnEvent", function(self)
             rmItem:SetFrameLevel(menu:GetFrameLevel() + 2)
 
             local rmLbl = rmItem:CreateFontString(nil, "OVERLAY")
-            rmLbl:SetFont(FONT_PATH, 11, "")
+            rmLbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
             rmLbl:SetPoint("LEFT", 10, 0)
             rmLbl:SetJustifyH("LEFT")
             rmLbl:SetText("Remove Spell")
@@ -2157,7 +2164,7 @@ initFrame:SetScript("OnEvent", function(self)
             ico:SetTexCoord(zoom, 1 - zoom, zoom, 1 - zoom)
 
             local lbl = item:CreateFontString(nil, "OVERLAY")
-            lbl:SetFont(FONT_PATH, 11, "")
+            lbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
             lbl:SetPoint("LEFT", 10, 0)
             lbl:SetPoint("RIGHT", ico, "LEFT", -5, 0)
             lbl:SetJustifyH("LEFT")
@@ -2184,8 +2191,8 @@ initFrame:SetScript("OnEvent", function(self)
                 end)
                 item:SetScript("OnClick", function()
                     menu:Hide()
-                    -- Extras (trinkets/racials/potions) and custom bars skip display check
-                    if not sp.isExtra and not (bd and bd.customSpells) and not sp.isDisplayed then
+                    -- Extras (trinkets/racials/potions) skip display check
+                    if not sp.isExtra and not sp.isDisplayed then
                         ShowNotDisplayedPopup()
                         return
                     end
@@ -2662,7 +2669,8 @@ initFrame:SetScript("OnEvent", function(self)
 
             -- Stack count text (mirrors _stackText on real CDM icons)
             local stackTxt = slot:CreateFontString(nil, "OVERLAY")
-            stackTxt:SetFont(FONT_PATH, 11, "OUTLINE")
+            stackTxt:SetFont(FONT_PATH, 11, GetCDMOptOutline())
+            if GetCDMOptUseShadow() then stackTxt:SetShadowOffset(1, -1) else stackTxt:SetShadowOffset(0, 0) end
             stackTxt:SetPoint("BOTTOMRIGHT", 0, 2)
             stackTxt:SetJustifyH("RIGHT")
             stackTxt:Hide()
@@ -2670,7 +2678,8 @@ initFrame:SetScript("OnEvent", function(self)
 
             -- Keybind text (mirrors _keybindText on real CDM icons)
             local kbTxt = slot:CreateFontString(nil, "OVERLAY")
-            kbTxt:SetFont(FONT_PATH, 9, "OUTLINE")
+            kbTxt:SetFont(FONT_PATH, 9, GetCDMOptOutline())
+            if GetCDMOptUseShadow() then kbTxt:SetShadowOffset(1, -1) else kbTxt:SetShadowOffset(0, 0) end
             kbTxt:SetPoint("TOPLEFT", 2, -2)
             kbTxt:SetJustifyH("LEFT")
             kbTxt:Hide()
@@ -3083,7 +3092,7 @@ initFrame:SetScript("OnEvent", function(self)
         addEdges[3]:SetPoint("TOPLEFT"); addEdges[3]:SetPoint("BOTTOMLEFT"); PP.Width(addEdges[3], 1)
         addEdges[4]:SetPoint("TOPRIGHT"); addEdges[4]:SetPoint("BOTTOMRIGHT"); PP.Width(addEdges[4], 1)
         local addLbl = addBtn:CreateFontString(nil, "OVERLAY")
-        addLbl:SetFont(FONT_PATH, 22, "OUTLINE")
+        addLbl:SetFont(FONT_PATH, 22, GetCDMOptOutline())
         addLbl:SetPoint("CENTER", 0, 1)
         addLbl:SetText("+")
 
@@ -3299,7 +3308,8 @@ initFrame:SetScript("OnEvent", function(self)
                 -- Stack count preview text
                 if slot._stackText then
                     if i <= count then
-                        slot._stackText:SetFont(FONT_PATH, bd.stackCountSize or 11, "OUTLINE")
+                        slot._stackText:SetFont(FONT_PATH, bd.stackCountSize or 11, GetCDMOptOutline())
+                    if GetCDMOptUseShadow() then slot._stackText:SetShadowOffset(1, -1) else slot._stackText:SetShadowOffset(0, 0) end
                         slot._stackText:ClearAllPoints()
                         slot._stackText:SetPoint("BOTTOMRIGHT", bd.stackCountX or 0, (bd.stackCountY or 0) + 2)
                         slot._stackText:SetTextColor(bd.stackCountR or 1, bd.stackCountG or 1, bd.stackCountB or 1)
@@ -3321,7 +3331,8 @@ initFrame:SetScript("OnEvent", function(self)
 
                 -- Keybind text preview
                 if slot._keybindText then
-                    slot._keybindText:SetFont(FONT_PATH, bd.keybindSize or 10, "OUTLINE")
+                    slot._keybindText:SetFont(FONT_PATH, bd.keybindSize or 10, GetCDMOptOutline())
+                    if GetCDMOptUseShadow() then slot._keybindText:SetShadowOffset(1, -1) else slot._keybindText:SetShadowOffset(0, 0) end
                     slot._keybindText:ClearAllPoints()
                     slot._keybindText:SetPoint("TOPLEFT", slot, "TOPLEFT", bd.keybindOffsetX or 2, bd.keybindOffsetY or -2)
                     slot._keybindText:SetTextColor(bd.keybindR or 1, bd.keybindG or 1, bd.keybindB or 1, bd.keybindA or 0.9)
@@ -3473,7 +3484,7 @@ initFrame:SetScript("OnEvent", function(self)
             ddBg:SetAllPoints(); ddBg:SetColorTexture(mBgR, mBgG, mBgB, mBgA)
             local ddBrd = EllesmereUI.MakeBorder(ddBtn, 1, 1, 1, mBrdA, EllesmereUI.PanelPP)
             local ddLbl = ddBtn:CreateFontString(nil, "OVERLAY")
-            ddLbl:SetFont(FONT_PATH, 13, "")
+            ddLbl:SetFont(FONT_PATH, 13, GetCDMOptOutline())
             ddLbl:SetAlpha(mTxtA)
             ddLbl:SetJustifyH("LEFT")
             ddLbl:SetWordWrap(false); ddLbl:SetMaxLines(1)
@@ -3524,7 +3535,7 @@ initFrame:SetScript("OnEvent", function(self)
                     item:SetFrameLevel(menu:GetFrameLevel() + 2)
 
                     local iLbl = item:CreateFontString(nil, "OVERLAY")
-                    iLbl:SetFont(FONT_PATH, 11, "")
+                    iLbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
                     iLbl:SetTextColor(tDimR, tDimG, tDimB, tDimA)
                     iLbl:SetJustifyH("LEFT")
                     iLbl:SetWordWrap(false); iLbl:SetMaxLines(1)
@@ -3633,7 +3644,7 @@ initFrame:SetScript("OnEvent", function(self)
                     addItem:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -1, -mH)
                     addItem:SetFrameLevel(menu:GetFrameLevel() + 2)
                     local addLbl = addItem:CreateFontString(nil, "OVERLAY")
-                    addLbl:SetFont(FONT_PATH, 11, "")
+                    addLbl:SetFont(FONT_PATH, 11, GetCDMOptOutline())
                     addLbl:SetPoint("LEFT", addItem, "LEFT", 10, 0)
                     addLbl:SetJustifyH("LEFT")
                     if atCap then

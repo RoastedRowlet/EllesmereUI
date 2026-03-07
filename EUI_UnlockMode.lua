@@ -3929,7 +3929,10 @@ local function SnapshotPositions()
                         if nPts and nPts > 0 then
                             local point, _, relPoint, x, y = fr:GetPoint(1)
                             if point then
-                                snapshotPositions[key] = { point = point, relPoint = relPoint, x = x, y = y }
+                                -- relPoint may be a frame object here (not a string) if the bar
+                                -- is anchored to a parent frame rather than UIParent. Mark this
+                                -- snapshot so RevertPositions skips writing it to SavedVariables.
+                                snapshotPositions[key] = { point = point, relPoint = relPoint, x = x, y = y, _fromLiveFrame = true }
                             end
                         end
                     end
@@ -4028,7 +4031,7 @@ local function RevertPositions()
         local elem = registeredElements[barKey]
         if elem and elem.savePosition then
             local snap = snapshotPositions[barKey]
-            if snap then
+            if snap and not snap._fromLiveFrame then
                 -- Pass snapshotted scale back to savePosition for non-EAB elements
                 local revertScale = snap.elemScale
                 elem.savePosition(barKey, snap.point, snap.relPoint or snap.point, snap.x, snap.y, revertScale)

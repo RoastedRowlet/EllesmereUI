@@ -103,6 +103,12 @@ initFrame:SetScript("OnEvent", function(self)
 
     local FONT_PATH = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("resourceBars"))
         or "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.TTF"
+    local function GetRBOptOutline()
+        return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+    end
+    local function GetRBOptUseShadow()
+        return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+    end
     local CONTENT_PAD = 45
     local SIDE_PAD = 20
 
@@ -432,9 +438,8 @@ initFrame:SetScript("OnEvent", function(self)
 
             -- Count text (centered on bar)
             if sp.showText and pc._countText then
-                pc._countText:SetFont(FONT_PATH, sp.textSize, "")
-                pc._countText:SetShadowOffset(1, -1)
-                pc._countText:SetShadowColor(0, 0, 0, 1)
+                pc._countText:SetFont(FONT_PATH, sp.textSize, GetRBOptOutline())
+                if GetRBOptUseShadow() then pc._countText:SetShadowOffset(1, -1); pc._countText:SetShadowColor(0, 0, 0, 1) end
                 pc._countText:ClearAllPoints()
                 pc._countText:SetPoint("CENTER", pc, "CENTER", sp.textXOffset or 0, sp.textYOffset or 0)
                 if isBar then
@@ -602,9 +607,8 @@ initFrame:SetScript("OnEvent", function(self)
         countTextOverlay:SetAllPoints(pipC)
         countTextOverlay:SetFrameLevel(pipC:GetFrameLevel() + 10)
         local countText = countTextOverlay:CreateFontString(nil, "OVERLAY")
-        countText:SetFont(FONT_PATH, sp.textSize, "")
-        countText:SetShadowOffset(1, -1)
-        countText:SetShadowColor(0, 0, 0, 1)
+        countText:SetFont(FONT_PATH, sp.textSize, GetRBOptOutline())
+        if GetRBOptUseShadow() then countText:SetShadowOffset(1, -1); countText:SetShadowColor(0, 0, 0, 1) end
         countText:SetTextColor(1, 1, 1, 0.9)
         countText:SetPoint("CENTER", pipC, "CENTER", sp.textXOffset or 0, sp.textYOffset or 0)
         pipC._countText = countText
@@ -2395,8 +2399,8 @@ initFrame:SetScript("OnEvent", function(self)
 
         -- Timer text
         if cb.showTimer then
-            pf.timerText:SetFont(FONT_PATH, cb.timerSize or 11, "")
-            pf.timerText:ClearAllPoints()
+            pf.timerText:SetFont(FONT_PATH, cb.timerSize or 11, GetRBOptOutline())
+            if GetRBOptUseShadow() then pf.timerText:SetShadowOffset(1, -1); pf.timerText:SetShadowColor(0, 0, 0, 1) end            pf.timerText:ClearAllPoints()
             pf.timerText:SetPoint("RIGHT", pf.bar, "RIGHT", -4 + (cb.timerX or 0), cb.timerY or 0)
             local remaining = 3.0 * (1 - _castBarPreviewFill)
             pf.timerText:SetText(string.format("%.1f", remaining))
@@ -2523,9 +2527,8 @@ initFrame:SetScript("OnEvent", function(self)
 
         -- Timer text
         local timerText = bar:CreateFontString(nil, "OVERLAY")
-        timerText:SetFont(FONT_PATH, cb.timerSize or 11, "")
-        timerText:SetShadowOffset(1, -1)
-        timerText:SetShadowColor(0, 0, 0, 1)
+        timerText:SetFont(FONT_PATH, cb.timerSize or 11, GetRBOptOutline())
+        if GetRBOptUseShadow() then timerText:SetShadowOffset(1, -1); timerText:SetShadowColor(0, 0, 0, 1) end
         timerText:SetPoint("RIGHT", bar, "RIGHT", -4 + (cb.timerX or 0), cb.timerY or 0)
         timerText:SetJustifyH("RIGHT")
         if cb.showTimer then

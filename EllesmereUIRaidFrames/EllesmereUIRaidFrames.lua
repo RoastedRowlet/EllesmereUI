@@ -236,7 +236,11 @@ local function SetFSFont(fs, font, size, flags)
     if EllesmereUI and EllesmereUI.GetFontPath then
         resolvedFont = EllesmereUI.GetFontPath("raidFrames")
     end
-    fs:SetFont(resolvedFont, size or 10, flags or "OUTLINE")
+    local resolvedFlags = flags
+    if resolvedFlags == nil then
+        resolvedFlags = (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or "OUTLINE"
+    end
+    fs:SetFont(resolvedFont, size or 10, resolvedFlags)
 end
 ns.SetFSFont = SetFSFont
 

@@ -11,6 +11,10 @@ local floor, abs, format = math.floor, math.abs, string.format
 local GetTime = GetTime
 local C_DateAndTime = C_DateAndTime
 
+local function GetBasicsOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or "OUTLINE"
+end
+
 -------------------------------------------------------------------------------
 --  Media paths
 -------------------------------------------------------------------------------
@@ -186,7 +190,7 @@ local function CreateClock()
         or "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.TTF"
 
     local fs = clockFrame:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(FONT_PATH, 11, "OUTLINE")
+    fs:SetFont(FONT_PATH, 11, GetBasicsOutline())
     fs:SetTextColor(1, 1, 1, 0.85)
     fs:SetPoint("CENTER")
     clockFrame._text = fs

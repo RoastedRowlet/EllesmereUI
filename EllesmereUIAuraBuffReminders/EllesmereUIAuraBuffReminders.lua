@@ -60,6 +60,12 @@ local function ResolveFontPath(fontName)
     end
     return fontPaths[fontName or "Expressway"] or fontPaths["Expressway"]
 end
+local function GetABROutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+end
+local function GetABRUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
 
 -------------------------------------------------------------------------------
 --  ShortLabel â€” shorten buff/aura names for icon text display
@@ -1013,8 +1019,8 @@ local function GetOrCreateCombatIcon(index)
     mkBorder("TOPLEFT","BOTTOMLEFT",false); mkBorder("TOPRIGHT","BOTTOMRIGHT",false)
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetPoint("TOP", f, "BOTTOM", 0, -2)
-    text:SetFont("Fonts\\ARIALN.TTF", 11)
-    text:SetShadowOffset(1, -1)
+    text:SetFont(ResolveFontPath(), 11, GetABROutline())
+    if GetABRUseShadow() then text:SetShadowOffset(1, -1) else text:SetShadowOffset(0, 0) end
     text:SetTextColor(1, 1, 1, 1)
     f._text = text
     combatIconPool[index] = f
@@ -1040,8 +1046,8 @@ local function ShowCombatIcon(iconIdx, spellID, texture, label)
         local textSize = p.textSize or 11
         local xOff = p.textXOffset or 0
         local yOff = p.textYOffset or -2
-        f._text:SetFont(fontPath, textSize, "")
-        f._text:SetShadowOffset(1, -1)
+        f._text:SetFont(fontPath, textSize, GetABROutline())
+        if GetABRUseShadow() then f._text:SetShadowOffset(1, -1) else f._text:SetShadowOffset(0, 0) end
         f._text:ClearAllPoints()
         f._text:SetPoint("TOP", f, "BOTTOM", xOff, yOff)
         f._text:SetTextColor(tc.r, tc.g, tc.b, 1)
@@ -1099,8 +1105,8 @@ local function GetOrCreateCursorIcon(index)
     mkBorder("TOPLEFT","BOTTOMLEFT",false); mkBorder("TOPRIGHT","BOTTOMRIGHT",false)
     local text = f:CreateFontString(nil, "OVERLAY")
     text:SetPoint("TOP", f, "BOTTOM", 0, -2)
-    text:SetFont("Fonts\\ARIALN.TTF", 11)
-    text:SetShadowOffset(1, -1)
+    text:SetFont(ResolveFontPath(), 11, GetABROutline())
+    if GetABRUseShadow() then text:SetShadowOffset(1, -1) else text:SetShadowOffset(0, 0) end
     text:SetTextColor(1, 1, 1, 1)
     f._text = text
     cursorIconPool[index] = f
@@ -1126,8 +1132,8 @@ local function ShowCursorIcon(iconIdx, spellID, texture, label)
         local textSize = p.textSize or 11
         local xOff = p.textXOffset or 0
         local yOff = p.textYOffset or -2
-        f._text:SetFont(fontPath, textSize, "")
-        f._text:SetShadowOffset(1, -1)
+        f._text:SetFont(fontPath, textSize, GetABROutline())
+        if GetABRUseShadow() then f._text:SetShadowOffset(1, -1) else f._text:SetShadowOffset(0, 0) end
         f._text:ClearAllPoints()
         f._text:SetPoint("TOP", f, "BOTTOM", xOff, yOff)
         f._text:SetTextColor(tc.r, tc.g, tc.b, 1)
@@ -1243,8 +1249,8 @@ local function GetOrCreateIcon(index)
     -- Text label below icon
     local text = btn:CreateFontString(nil, "OVERLAY")
     text:SetPoint("TOP", btn, "BOTTOM", 0, -2)
-    text:SetFont("Fonts\\ARIALN.TTF", 11)
-    text:SetShadowOffset(1, -1)
+    text:SetFont(ResolveFontPath(), 11, GetABROutline())
+    if GetABRUseShadow() then text:SetShadowOffset(1, -1) else text:SetShadowOffset(0, 0) end
     text:SetTextColor(1, 1, 1, 1)
     btn._text = text
 
@@ -1279,8 +1285,8 @@ local function GetOrCreateTalentIcon(index)
     mkBorder("TOPLEFT","BOTTOMLEFT",false); mkBorder("TOPRIGHT","BOTTOMRIGHT",false)
     local text = btn:CreateFontString(nil, "OVERLAY")
     text:SetPoint("TOP", btn, "BOTTOM", 0, -2)
-    text:SetFont("Fonts\\ARIALN.TTF", 11)
-    text:SetShadowOffset(1, -1)
+    text:SetFont(ResolveFontPath(), 11, GetABROutline())
+    if GetABRUseShadow() then text:SetShadowOffset(1, -1) else text:SetShadowOffset(0, 0) end
     text:SetTextColor(1, 1, 1, 1)
     btn._text = text
     talentIconPool[index] = btn
@@ -1382,8 +1388,8 @@ local function ShowIcon(iconIdx, setupFn, dismissKey)
         local textSize = p.textSize or 11
         local xOff = p.textXOffset or 0
         local yOff = p.textYOffset or -2
-        btn._text:SetFont(fontPath, textSize, "")
-        btn._text:SetShadowOffset(1, -1)
+        btn._text:SetFont(fontPath, textSize, GetABROutline())
+        if GetABRUseShadow() then btn._text:SetShadowOffset(1, -1) else btn._text:SetShadowOffset(0, 0) end
         btn._text:ClearAllPoints()
         btn._text:SetPoint("TOP", btn, "BOTTOM", xOff, yOff)
         btn._text:SetTextColor(tc.r, tc.g, tc.b, 1)
@@ -1426,8 +1432,8 @@ local function ShowTalentIcon(iconIdx, setupFn)
         local textSize = p.textSize or 11
         local xOff = p.textXOffset or 0
         local yOff = p.textYOffset or -2
-        btn._text:SetFont(fontPath, textSize, "")
-        btn._text:SetShadowOffset(1, -1)
+        btn._text:SetFont(fontPath, textSize, GetABROutline())
+        if GetABRUseShadow() then btn._text:SetShadowOffset(1, -1) else btn._text:SetShadowOffset(0, 0) end
         btn._text:ClearAllPoints()
         btn._text:SetPoint("TOP", btn, "BOTTOM", xOff, yOff)
         btn._text:SetTextColor(tc.r, tc.g, tc.b, 1)

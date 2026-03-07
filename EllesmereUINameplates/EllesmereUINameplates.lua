@@ -24,12 +24,20 @@ local function GetFont()
     end
     return EllesmereUINameplatesDB and EllesmereUINameplatesDB.font or defaults.font
 end
+local function GetNPOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or "OUTLINE"
+end
+local function GetNPUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
 local function SetFSFont(fs, size, flags)
   if not (fs and fs.SetFont) then return end
-  fs:SetFont(GetFont(), size or 11, flags or "OUTLINE")
+  fs:SetFont(GetFont(), size or 11, flags or GetNPOutline())
 end
 
 ns.GetFont = GetFont
+ns.GetNPOutline = GetNPOutline
+ns.GetNPUseShadow = GetNPUseShadow
 ns.SetFSFont = SetFSFont
 ns.plates = {}
 _G.EllesmereNameplates_NS = ns

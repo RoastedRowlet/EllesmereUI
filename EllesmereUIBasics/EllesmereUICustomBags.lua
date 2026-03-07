@@ -26,6 +26,13 @@ local MEDIA = "Interface\\AddOns\\EllesmereUI\\media\\"
 local FONT_PATH = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("extras"))
     or MEDIA .. "fonts\\Expressway.TTF"
 
+local function GetBagsOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+end
+local function GetBagsUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
+
 local SLOT_SIZE = 37
 local SLOT_PAD  = 4
 local QUALITY_COLORS = {
@@ -137,8 +144,8 @@ local function CreateSlotButton(parent, index)
 
     -- Item level text
     local ilvl = btn:CreateFontString(nil, "OVERLAY")
-    ilvl:SetFont(FONT_PATH, 10, "")
-    ilvl:SetShadowOffset(1, -1)
+    ilvl:SetFont(FONT_PATH, 10, GetBagsOutline())
+    if GetBagsUseShadow() then ilvl:SetShadowOffset(1, -1) else ilvl:SetShadowOffset(0, 0) end
     ilvl:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
     ilvl:SetTextColor(1, 1, 1, 0.9)
     ilvl:Hide()
@@ -265,8 +272,8 @@ local function BuildBagFrame()
 
     -- Title bar
     local title = bagFrame:CreateFontString(nil, "OVERLAY")
-    title:SetFont(FONT_PATH, 12, "")
-    title:SetShadowOffset(1, -1)
+    title:SetFont(FONT_PATH, 12, GetBagsOutline())
+    if GetBagsUseShadow() then title:SetShadowOffset(1, -1) else title:SetShadowOffset(0, 0) end
     title:SetPoint("TOPLEFT", bagFrame, "TOPLEFT", 8, -6)
     local ar, ag, ab = GetAccent()
     title:SetTextColor(ar, ag, ab, 1)
@@ -275,8 +282,8 @@ local function BuildBagFrame()
 
     -- Slot count
     local slotCount = bagFrame:CreateFontString(nil, "OVERLAY")
-    slotCount:SetFont(FONT_PATH, 11, "")
-    slotCount:SetShadowOffset(1, -1)
+    slotCount:SetFont(FONT_PATH, 11, GetBagsOutline())
+    if GetBagsUseShadow() then slotCount:SetShadowOffset(1, -1) else slotCount:SetShadowOffset(0, 0) end
     slotCount:SetPoint("TOPRIGHT", bagFrame, "TOPRIGHT", -8, -6)
     slotCount:SetTextColor(0.8, 0.8, 0.8, 1)
     bagFrame._slotCount = slotCount
@@ -322,8 +329,8 @@ local function BuildBagFrame()
 
     -- Gold display
     local goldText = bagFrame:CreateFontString(nil, "OVERLAY")
-    goldText:SetFont(FONT_PATH, 11, "")
-    goldText:SetShadowOffset(1, -1)
+    goldText:SetFont(FONT_PATH, 11, GetBagsOutline())
+    if GetBagsUseShadow() then goldText:SetShadowOffset(1, -1) else goldText:SetShadowOffset(0, 0) end
     goldText:SetPoint("BOTTOMLEFT", bagFrame, "BOTTOMLEFT", 8, 6)
     goldText:SetTextColor(1, 0.84, 0, 1)
     bagFrame._goldText = goldText

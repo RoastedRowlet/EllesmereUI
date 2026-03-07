@@ -8,6 +8,13 @@ local ADDON_NAME, ns = ...
 local FONT_PATH = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("extras"))
     or "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.TTF"
 local BG_R, BG_G, BG_B, BG_A = 0.055, 0.063, 0.078, 0.92
+
+local function GetDMOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+end
+local function GetDMUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
 local BAR_BG_A = 0.35
 local BORDER_A = 0.15
 
@@ -138,8 +145,8 @@ local function ReskinChildren()
                 local region = select(j, child:GetRegions())
                 if region and region:IsObjectType("FontString") and not region._euiFontSet then
                     local _, size = region:GetFont()
-                    region:SetFont(FONT_PATH, size or 12, "")
-                    region:SetShadowOffset(1, -1)
+                    region:SetFont(FONT_PATH, size or 12, GetDMOutline())
+                    if GetDMUseShadow() then region:SetShadowOffset(1, -1) else region:SetShadowOffset(0, 0) end
                     region:SetShadowColor(0, 0, 0, 0.8)
                     region._euiFontSet = true
                 end
@@ -156,8 +163,8 @@ local function ReskinChildren()
                         local region = select(m, bar:GetRegions())
                         if region and region:IsObjectType("FontString") and not region._euiFontSet then
                             local _, size = region:GetFont()
-                            region:SetFont(FONT_PATH, size or 11, "")
-                            region:SetShadowOffset(1, -1)
+                            region:SetFont(FONT_PATH, size or 11, GetDMOutline())
+                            if GetDMUseShadow() then region:SetShadowOffset(1, -1) else region:SetShadowOffset(0, 0) end
                             region:SetShadowColor(0, 0, 0, 0.8)
                             region._euiFontSet = true
                         end
@@ -172,8 +179,8 @@ local function ReskinChildren()
                                 local region = select(q, inner:GetRegions())
                                 if region and region:IsObjectType("FontString") and not region._euiFontSet then
                                     local _, size = region:GetFont()
-                                    region:SetFont(FONT_PATH, size or 11, "")
-                                    region:SetShadowOffset(1, -1)
+                                    region:SetFont(FONT_PATH, size or 11, GetDMOutline())
+                                    if GetDMUseShadow() then region:SetShadowOffset(1, -1) else region:SetShadowOffset(0, 0) end
                                     region:SetShadowColor(0, 0, 0, 0.8)
                                     region._euiFontSet = true
                                 end

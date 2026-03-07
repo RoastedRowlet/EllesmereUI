@@ -30,6 +30,12 @@ local function GetRBFont()
     end
     return RB_FONT_FALLBACK
 end
+local function GetRBOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+end
+local function GetRBUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
 
 -- PowerType enum values (Enum.PowerType)
 local PT = {
@@ -524,9 +530,8 @@ local function CreateStatusBar(parent, name, w, h, borderSize, borderR, borderG,
     textFrame:SetFrameLevel(bar:GetFrameLevel() + 2)
     textFrame:EnableMouse(false)
     local text = textFrame:CreateFontString(nil, "OVERLAY")
-    text:SetFont(GetRBFont(), 11, "")
-    text:SetShadowOffset(1, -1)
-    text:SetShadowColor(0, 0, 0, 1)
+    text:SetFont(GetRBFont(), 11, GetRBOutline())
+    if GetRBUseShadow() then text:SetShadowOffset(1, -1); text:SetShadowColor(0, 0, 0, 1) end
     text:SetTextColor(1, 1, 1, 0.9)
     text:SetPoint("CENTER", textFrame, "CENTER")
     bar._text = text
@@ -1165,8 +1170,8 @@ local function BuildBars()
         -- Text positioning
         healthBar._text:ClearAllPoints()
         healthBar._text:SetPoint("CENTER", healthBar, "CENTER", hp.textXOffset, hp.textYOffset)
-        healthBar._text:SetFont(GetRBFont(), hp.textSize, "")
-
+        healthBar._text:SetFont(GetRBFont(), hp.textSize, GetRBOutline())
+        if GetRBUseShadow() then healthBar._text:SetShadowOffset(1, -1); healthBar._text:SetShadowColor(0, 0, 0, 1) end
         healthBar:Show()
         healthBar:SetAlpha(hp.barAlpha or 1)
         ApplyBarOrientation(healthBar, hpOri)
@@ -1241,8 +1246,8 @@ local function BuildBars()
         -- Text positioning
         primaryBar._text:ClearAllPoints()
         primaryBar._text:SetPoint("CENTER", primaryBar, "CENTER", pp.textXOffset, pp.textYOffset)
-        primaryBar._text:SetFont(GetRBFont(), pp.textSize, "")
-
+        primaryBar._text:SetFont(GetRBFont(), pp.textSize, GetRBOutline())
+        if GetRBUseShadow() then primaryBar._text:SetShadowOffset(1, -1); primaryBar._text:SetShadowColor(0, 0, 0, 1) end
         primaryBar:Show()
         primaryBar:SetAlpha(pp.barAlpha or 1)
         ApplyBarOrientation(primaryBar, ppOri)
@@ -1371,7 +1376,7 @@ local function BuildBars()
                     runeFrames[i] = CreatePip(secondaryFrame, 20, pipH, i,
                         0, 0, 0, 0, 0)
                     local cdText = runeFrames[i]:CreateFontString(nil, "OVERLAY")
-                    cdText:SetFont(GetRBFont(), 9, "OUTLINE")
+                    cdText:SetFont(GetRBFont(), 9, GetRBOutline())
                     cdText:SetTextColor(1, 1, 1, 0.8)
                     cdText:SetPoint("CENTER")
                     runeFrames[i]._cdText = cdText
@@ -1499,9 +1504,8 @@ local function BuildBars()
             secondaryFrame._countText:ClearAllPoints()
             secondaryFrame._countText:SetParent(secondaryFrame._countTextOverlay)
             secondaryFrame._countText:SetPoint("CENTER", secondaryFrame, "CENTER", sp.textXOffset, sp.textYOffset)
-            secondaryFrame._countText:SetFont(GetRBFont(), sp.textSize, "")
-            secondaryFrame._countText:SetShadowOffset(1, -1)
-            secondaryFrame._countText:SetShadowColor(0, 0, 0, 1)
+            secondaryFrame._countText:SetFont(GetRBFont(), sp.textSize, GetRBOutline())
+            if GetRBUseShadow() then secondaryFrame._countText:SetShadowOffset(1, -1); secondaryFrame._countText:SetShadowColor(0, 0, 0, 1) end
             secondaryFrame._countText:Show()
         elseif secondaryFrame._countText then
             secondaryFrame._countText:Hide()
@@ -2228,18 +2232,16 @@ BuildCastBar = function()
 
         -- Spell name text
         local nameText = bar:CreateFontString(nil, "OVERLAY")
-        nameText:SetFont(GetRBFont(), 11, "")
-        nameText:SetShadowOffset(1, -1)
-        nameText:SetShadowColor(0, 0, 0, 1)
+        nameText:SetFont(GetRBFont(), 11, GetRBOutline())
+        if GetRBUseShadow() then nameText:SetShadowOffset(1, -1); nameText:SetShadowColor(0, 0, 0, 1) end
         nameText:SetPoint("LEFT", bar, "LEFT", 4, 0)
         nameText:SetJustifyH("LEFT")
         castBarFrame._nameText = nameText
 
         -- Timer text
         local timerText = bar:CreateFontString(nil, "OVERLAY")
-        timerText:SetFont(GetRBFont(), 11, "")
-        timerText:SetShadowOffset(1, -1)
-        timerText:SetShadowColor(0, 0, 0, 1)
+        timerText:SetFont(GetRBFont(), 11, GetRBOutline())
+        if GetRBUseShadow() then timerText:SetShadowOffset(1, -1); timerText:SetShadowColor(0, 0, 0, 1) end
         timerText:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
         timerText:SetJustifyH("RIGHT")
         castBarFrame._timerText = timerText
@@ -2403,8 +2405,8 @@ BuildCastBar = function()
     -- Timer text
     local timerText = castBarFrame._timerText
     if cb.showTimer then
-        timerText:SetFont(GetRBFont(), cb.timerSize or 11, "")
-        timerText:ClearAllPoints()
+        timerText:SetFont(GetRBFont(), cb.timerSize or 11, GetRBOutline())
+        if GetRBUseShadow() then timerText:SetShadowOffset(1, -1); timerText:SetShadowColor(0, 0, 0, 1) end        timerText:ClearAllPoints()
         timerText:SetPoint("RIGHT", bar, "RIGHT", -4 + (cb.timerX or 0), cb.timerY or 0)
         timerText:Show()
     else

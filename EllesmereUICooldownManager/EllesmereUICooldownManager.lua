@@ -1,4 +1,4 @@
-﻿-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 --  EllesmereUICooldownManager.lua
 --  CDM Look Customization and Cooldown Display
 --  Mirrors Blizzard CDM bars with custom styling, cooldown swipes,
@@ -10,6 +10,9 @@ local ECME = EllesmereUI.Lite.NewAddon("EllesmereUICooldownManager")
 ns.ECME = ECME
 
 local PP = EllesmereUI.PP
+
+local function GetCDMOutline() return EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag() or "" end
+local function GetCDMUseShadow() return EllesmereUI.GetFontUseShadow and EllesmereUI.GetFontUseShadow() or true end
 
 -- Snap a value to the nearest physical pixel at a given bar scale
 local function SnapForScale(x, barScale)
@@ -181,6 +184,58 @@ local _tickAuraCache  = {}  -- [spellID] = aura table or false
 local _tickBlizzActiveCache = {}  -- [spellID] = true when Blizzard CDM marks spell as active (wasSetFromAura)
 local _tickBlizzOverrideCache = {} -- [baseSpellID] = overrideSpellID, built each tick from all CDM viewer children
 local _tickBlizzChildCache = {}    -- [overrideSpellID] = blizzChild, for direct charge/cooldown reads on activation overrides
+local _tickBlizzAllChildCache = {} -- [resolvedSid] = blizzChild, for all CDM children (used by custom bars)
+-- spellID -> cooldownID map built once from C_CooldownViewer.GetCooldownViewerCategorySet (all categories).
+-- Rebuilt on PLAYER_LOGIN and spec change. Used by custom bars to find CDM child frames by spellID.
+local _spellToCooldownID = {}
+
+local function RebuildSpellToCooldownID()
+    wipe(_spellToCooldownID)
+    if not C_CooldownViewer or not C_CooldownViewer.GetCooldownViewerCategorySet then return end
+    for cat = 0, 3 do
+        local ids = C_CooldownViewer.GetCooldownViewerCategorySet(cat, true)
+        if ids then
+            for _, cdID in ipairs(ids) do
+                local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(cdID)
+                if info then
+                    if info.spellID and info.spellID > 0 then
+                        _spellToCooldownID[info.spellID] = cdID
+                    end
+                    if info.overrideSpellID and info.overrideSpellID > 0 then
+                        _spellToCooldownID[info.overrideSpellID] = cdID
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Scan all four CDM viewers for a child whose .cooldownID matches the given cooldownID.
+-- Returns the child frame, or nil if not found.
+local _cdmViewerNames = {
+    "EssentialCooldownViewer",
+    "UtilityCooldownViewer",
+    "BuffIconCooldownViewer",
+    "BuffBarCooldownViewer",
+}
+local function FindCDMChildByCooldownID(cooldownID)
+    if not cooldownID then return nil end
+    for _, vname in ipairs(_cdmViewerNames) do
+        local viewer = _G[vname]
+        if viewer then
+            for ci = 1, viewer:GetNumChildren() do
+                local ch = select(ci, viewer:GetChildren())
+                if ch then
+                    local chID = ch.cooldownID or (ch.cooldownInfo and ch.cooldownInfo.cooldownID)
+                    if chID == cooldownID then
+                        return ch
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
 
 -- Keybind cache: built once out-of-combat, looked up per tick
 local _cdmKeybindCache       = {}   -- [spellID] -> formatted key string
@@ -886,7 +941,9 @@ local function SaveCurrentSpecProfile()
             local entry = {}
             if MAIN_BAR_KEYS[key] then
                 -- trackedSpells are session-ephemeral Blizzard cooldownIDs — don't persist them.
-                entry.extraSpells = DeepCopy(barData.extraSpells)
+                -- Persist removedSpells (spellIDs) so user removals survive reloads.
+                entry.extraSpells   = DeepCopy(barData.extraSpells)
+                entry.removedSpells = DeepCopy(barData.removedSpells)
             elseif barData.barType ~= "trinkets" then
                 -- Custom non-trinket bars: save customSpells
                 entry.customSpells = DeepCopy(barData.customSpells)
@@ -928,6 +985,7 @@ local function LoadSpecProfile(specKey)
                         -- Always re-snapshot from the live Blizzard CDM on login.
                         barData.trackedSpells = nil
                         barData.extraSpells   = DeepCopy(saved.extraSpells)
+                        barData.removedSpells = DeepCopy(saved.removedSpells)
                     elseif barData.barType ~= "trinkets" then
                         barData.customSpells = DeepCopy(saved.customSpells)
                     end
@@ -936,6 +994,7 @@ local function LoadSpecProfile(specKey)
                     if MAIN_BAR_KEYS[barData.key] then
                         barData.trackedSpells = nil  -- will trigger Blizzard snapshot
                         barData.extraSpells = nil
+                        barData.removedSpells = nil
                     elseif barData.barType ~= "trinkets" then
                         barData.customSpells = {}
                     end
@@ -962,6 +1021,7 @@ local function LoadSpecProfile(specKey)
             if MAIN_BAR_KEYS[barData.key] then
                 barData.trackedSpells = nil
                 barData.extraSpells = nil
+                barData.removedSpells = nil
             elseif barData.barType ~= "trinkets" then
                 barData.customSpells = {}
             end
@@ -1605,6 +1665,18 @@ local function GetCDMFont()
         return EllesmereUI.GetFontPath("cdm")
     end
     return CDM_FONT_FALLBACK
+end
+local function GetCDMOutline()
+    if EllesmereUI and EllesmereUI.GetFontOutlineFlag then
+        return EllesmereUI.GetFontOutlineFlag()
+    end
+    return "OUTLINE"
+end
+local function GetCDMUseShadow()
+    if EllesmereUI and EllesmereUI.GetFontUseShadow then
+        return EllesmereUI.GetFontUseShadow()
+    end
+    return false
 end
 
 -- Blizzard CDM frame names
@@ -2488,7 +2560,8 @@ local function CreateCDMIcon(barKey, index)
 
     -- Charge count text
     local chargeText = textOverlay:CreateFontString(nil, "OVERLAY")
-    chargeText:SetFont(GetCDMFont(), barData.stackCountSize or 11, "OUTLINE")
+    chargeText:SetFont(GetCDMFont(), barData.stackCountSize or 11, GetCDMOutline())
+    if GetCDMUseShadow() then chargeText:SetShadowOffset(1, -1) else chargeText:SetShadowOffset(0, 0) end
     chargeText:SetPoint("BOTTOMRIGHT", textOverlay, "BOTTOMRIGHT", barData.stackCountX or 0, (barData.stackCountY or 0) + 2)
     chargeText:SetJustifyH("RIGHT")
     chargeText:SetTextColor(barData.stackCountR or 1, barData.stackCountG or 1, barData.stackCountB or 1)
@@ -2497,7 +2570,8 @@ local function CreateCDMIcon(barKey, index)
 
     -- Stack count text
     local stackText = textOverlay:CreateFontString(nil, "OVERLAY")
-    stackText:SetFont(GetCDMFont(), barData.stackCountSize or 11, "OUTLINE")
+    stackText:SetFont(GetCDMFont(), barData.stackCountSize or 11, GetCDMOutline())
+    if GetCDMUseShadow() then stackText:SetShadowOffset(1, -1) else stackText:SetShadowOffset(0, 0) end
     stackText:SetPoint("BOTTOMRIGHT", textOverlay, "BOTTOMRIGHT", barData.stackCountX or 0, (barData.stackCountY or 0) + 2)
     stackText:SetJustifyH("RIGHT")
     stackText:SetTextColor(barData.stackCountR or 1, barData.stackCountG or 1, barData.stackCountB or 1)
@@ -2516,7 +2590,8 @@ local function CreateCDMIcon(barKey, index)
 
     -- Keybind text overlay (top-left corner of icon)
     local keybindText = textOverlay:CreateFontString(nil, "OVERLAY")
-    keybindText:SetFont(GetCDMFont(), barData.keybindSize or 10, "OUTLINE")
+    keybindText:SetFont(GetCDMFont(), barData.keybindSize or 10, GetCDMOutline())
+    if GetCDMUseShadow() then keybindText:SetShadowOffset(1, -1) else keybindText:SetShadowOffset(0, 0) end
     keybindText:SetPoint("TOPLEFT", textOverlay, "TOPLEFT", barData.keybindOffsetX or 2, barData.keybindOffsetY or -2)
     keybindText:SetJustifyH("LEFT")
     keybindText:SetTextColor(barData.keybindR or 1, barData.keybindG or 1, barData.keybindB or 1, barData.keybindA or 0.9)
@@ -2944,7 +3019,62 @@ local function UpdateCustomBarIcons(barKey)
                         ourIcon._keybindText:Hide()
                     end
                 end
-                ApplySpellCooldown(ourIcon, resolvedID, barData.desaturateOnCD, barData.showCharges, swAlpha, false)
+                -- Detect active aura state before applying cooldown.
+                -- If the spell has an active player aura, show its duration on the
+                -- cooldown frame (same as the main bar path for buff bars).
+                local auraHandled = false
+                local skipCDDisplay = false
+                do
+                    -- Primary: look up the Blizzard CDM child for this spell via the
+                    -- spellID -> cooldownID map, then find the child frame by cooldownID.
+                    -- This works for custom bar spells not present in _tickBlizzAllChildCache
+                    -- because they may not be visible in any viewer at the moment.
+                    local blizzChild = _tickBlizzAllChildCache[resolvedID]
+                    if not blizzChild then
+                        local cdID = _spellToCooldownID[resolvedID] or _spellToCooldownID[spellID]
+                        if cdID then
+                            blizzChild = FindCDMChildByCooldownID(cdID)
+                        end
+                    end
+                    local isAura = blizzChild and (blizzChild.wasSetFromAura == true or blizzChild.auraInstanceID ~= nil)
+                    local auraID = blizzChild and blizzChild.auraInstanceID
+                    local auraUnit = blizzChild and blizzChild.auraDataUnit or "player"
+
+                    -- Fallback: spell not in any CDM viewer — check _tickBlizzActiveCache
+                    -- which covers all four viewers scanned each tick.
+                    if not isAura then
+                        if _tickBlizzActiveCache[resolvedID] or _tickBlizzActiveCache[spellID] then
+                            isAura = true
+                        end
+                    end
+
+                    if isAura then
+                        local chargeInfo = C_Spell.GetSpellCharges and C_Spell.GetSpellCharges(resolvedID)
+                        local isChargeSid = chargeInfo ~= nil
+                        local isBuffBar = (barKey == "buffs" or barData.barType == "buffs")
+                        if auraID and (not isChargeSid or isBuffBar) then
+                            local ok, auraDurObj = pcall(C_UnitAuras.GetAuraDuration, auraUnit, auraID)
+                            if ok and auraDurObj then
+                                ourIcon._cooldown:Clear()
+                                pcall(ourIcon._cooldown.SetCooldownFromDurationObject, ourIcon._cooldown, auraDurObj, true)
+                                ourIcon._cooldown:SetReverse(false)
+                                auraHandled = true
+                                skipCDDisplay = true
+                            else
+                                auraHandled = true
+                            end
+                        else
+                            auraHandled = true
+                        end
+                    end
+
+                    -- Final fallback: _tickBlizzActiveCache covers spells active in CDM viewers
+                    if not auraHandled and (_tickBlizzActiveCache[resolvedID] or _tickBlizzActiveCache[spellID]) then
+                        auraHandled = true
+                    end
+                end
+
+                ApplySpellCooldown(ourIcon, resolvedID, barData.desaturateOnCD, barData.showCharges, swAlpha, skipCDDisplay)
 
                 -- If this is a live Blizzard activation override, read the charge
                 -- count directly from the Blizzard child's Applications frame.
@@ -2965,23 +3095,6 @@ local function UpdateCustomBarIcons(barKey)
                     ourIcon._cooldown:SetUseAuraDisplayTime(false)
                 end
 
-                -- Detect active state: spell is marked active by Blizzard's CDM system
-                -- (wasSetFromAura on any CDM viewer child), built once per tick.
-                -- Falls back to player aura check for spells not in any CDM viewer.
-                local auraHandled = false
-                if activeAnim ~= "none" and activeAnim ~= "hideActive" then
-                    if _tickBlizzActiveCache[resolvedID] or _tickBlizzActiveCache[spellID] then
-                        auraHandled = true
-                    else
-                        local aura = _tickAuraCache[resolvedID]
-                        if aura == nil then
-                            local ok, res = pcall(C_UnitAuras.GetPlayerAuraBySpellID, resolvedID)
-                            aura = (ok and res) or false
-                            _tickAuraCache[resolvedID] = aura
-                        end
-                        if aura then auraHandled = true end
-                    end
-                end
                 ApplyActiveAnimation(ourIcon, auraHandled, barData, barKey, activeAnim, animR, animG, animB, swAlpha)
 
                 ourIcon:Show()
@@ -2990,7 +3103,8 @@ local function UpdateCustomBarIcons(barKey)
                 -- Hide buff icons when inactive (aura not active on player) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â buff bars only
                 -- Skip during unlock mode so the bar is fully visible for repositioning
                 local isBuffBar = (barKey == "buffs" or barData.barType == "buffs")
-                if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive then
+                if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive
+                   and not (EllesmereUI._mainFrame and EllesmereUI._mainFrame:IsShown()) then
                     -- Build aura set once per bar update (cached on frame)
                     if next(frame._auraActiveSet) == nil then
                         local blizzBuffFrame = _G.BuffIconCooldownViewer
@@ -3168,7 +3282,8 @@ UpdateCDMBarIcons = function(barKey)
             -- Hide buff icons when inactive (aura not active) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â buff bars only
             -- Skip during unlock mode so the bar is fully visible for repositioning
             local isBuffBar = (barKey == "buffs" or barData.barType == "buffs")
-            if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive then
+            if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive
+               and not (EllesmereUI._mainFrame and EllesmereUI._mainFrame:IsShown()) then
                 if not blizzIcon.auraInstanceID then
                     ourIcon:Hide()
                 end
@@ -3267,14 +3382,16 @@ local function RefreshCDMIconAppearance(barKey)
         end
         -- Update charge text font/position
         if icon._chargeText then
-            icon._chargeText:SetFont(GetCDMFont(), barData.stackCountSize or 11, "OUTLINE")
+            icon._chargeText:SetFont(GetCDMFont(), barData.stackCountSize or 11, GetCDMOutline())
+            if GetCDMUseShadow() then icon._chargeText:SetShadowOffset(1, -1) else icon._chargeText:SetShadowOffset(0, 0) end
             icon._chargeText:ClearAllPoints()
             icon._chargeText:SetPoint("BOTTOMRIGHT", barData.stackCountX or 0, (barData.stackCountY or 0) + 2)
             icon._chargeText:SetTextColor(barData.stackCountR or 1, barData.stackCountG or 1, barData.stackCountB or 1)
         end
         -- Update stack count text font/position/color
         if icon._stackText then
-            icon._stackText:SetFont(GetCDMFont(), barData.stackCountSize or 11, "OUTLINE")
+            icon._stackText:SetFont(GetCDMFont(), barData.stackCountSize or 11, GetCDMOutline())
+            if GetCDMUseShadow() then icon._stackText:SetShadowOffset(1, -1) else icon._stackText:SetShadowOffset(0, 0) end
             icon._stackText:ClearAllPoints()
             icon._stackText:SetPoint("BOTTOMRIGHT", barData.stackCountX or 0, (barData.stackCountY or 0) + 2)
             icon._stackText:SetTextColor(barData.stackCountR or 1, barData.stackCountG or 1, barData.stackCountB or 1)
@@ -3282,7 +3399,8 @@ local function RefreshCDMIconAppearance(barKey)
 
         -- Update keybind text style
         if icon._keybindText then
-            icon._keybindText:SetFont(GetCDMFont(), barData.keybindSize or 10, "OUTLINE")
+            icon._keybindText:SetFont(GetCDMFont(), barData.keybindSize or 10, GetCDMOutline())
+            if GetCDMUseShadow() then icon._keybindText:SetShadowOffset(1, -1) else icon._keybindText:SetShadowOffset(0, 0) end
             icon._keybindText:ClearAllPoints()
             icon._keybindText:SetPoint("TOPLEFT", icon._textOverlay, "TOPLEFT", barData.keybindOffsetX or 2, barData.keybindOffsetY or -2)
             icon._keybindText:SetTextColor(barData.keybindR or 1, barData.keybindG or 1, barData.keybindB or 1, barData.keybindA or 0.9)
@@ -3341,6 +3459,21 @@ local function SnapshotBlizzardCDM(barKey, barData)
     -- Only commit if we got actual children — leave nil so the next tick
     -- retries when Blizzard's CDM viewer hasn't populated yet.
     if #tracked == 0 then return false end
+
+    -- Filter out any spells the user has explicitly removed (persisted as spellIDs).
+    if barData.removedSpells and next(barData.removedSpells) then
+        local filtered = {}
+        for _, cdID in ipairs(tracked) do
+            local info = C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCooldownInfo
+                and C_CooldownViewer.GetCooldownViewerCooldownInfo(cdID)
+            local sid = info and (info.overrideSpellID or info.spellID)
+            if not sid or not barData.removedSpells[sid] then
+                filtered[#filtered + 1] = cdID
+            end
+        end
+        tracked = filtered
+    end
+
     barData.trackedSpells = tracked
     return true
 end
@@ -3559,7 +3692,8 @@ local function UpdateTrackedBarIcons(barKey)
             -- Hide buff icons when inactive (aura not active) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â buff bars only
             -- Skip during unlock mode so the bar is fully visible for repositioning
             local isBuffBar = (barKey == "buffs" or barData.barType == "buffs")
-            if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive then
+            if barData.hideBuffsWhenInactive and isBuffBar and not EllesmereUI._unlockActive
+               and not (EllesmereUI._mainFrame and EllesmereUI._mainFrame:IsShown()) then
                 if not blizzChild.auraInstanceID then
                     ourIcon:Hide()
                 else
@@ -3687,8 +3821,9 @@ local function UpdateAllCDMBars(dt)
     wipe(_tickBlizzActiveCache)
     wipe(_tickBlizzOverrideCache)
     wipe(_tickBlizzChildCache)
+    wipe(_tickBlizzAllChildCache)
     do
-        local viewers = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer" }
+        local viewers = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer", "BuffBarCooldownViewer" }
         for _, vName in ipairs(viewers) do
             local vf = _G[vName]
             if vf then
@@ -3704,6 +3839,12 @@ local function UpdateAllCDMBars(dt)
                                     _tickBlizzOverrideCache[info.spellID] = info.overrideSpellID
                                     -- Child cache: overrideSpellID -> blizzChild for direct charge reads
                                     _tickBlizzChildCache[info.overrideSpellID] = ch
+                                end
+                                -- All-child cache: resolved spellID -> blizzChild (used by custom bars
+                                -- to get auraInstanceID directly from the frame, which is non-secret)
+                                local resolvedSid = info.overrideSpellID or info.spellID
+                                if resolvedSid and resolvedSid > 0 then
+                                    _tickBlizzAllChildCache[resolvedSid] = ch
                                 end
                                 -- Active cache: resolved spellID -> true when aura-active
                                 if ch.wasSetFromAura == true or ch.auraInstanceID ~= nil then
@@ -4054,7 +4195,7 @@ BuildAllCDMBars = function()
                     for ri = 1, icon._cooldown:GetNumRegions() do
                         local region = select(ri, icon._cooldown:GetRegions())
                         if region and region.GetObjectType and region:GetObjectType() == "FontString" then
-                            region:SetFont(fontPath, fontSize, "OUTLINE")
+                            region:SetFont(fontPath, fontSize, GetCDMOutline())
                             break
                         end
                     end
@@ -4177,21 +4318,31 @@ function ns.GetCDMSpellsForBar(barKey)
         or CDM_BAR_CATEGORIES[barType or "cooldowns"]
         or { 0, 1 }
 
-    -- Build set of displayed cooldownIDs (have a Blizzard child)
+    -- Build set of displayed cooldownIDs (have a Blizzard child).
+    -- For custom bars, barKey has no BLIZZ_CDM_FRAMES entry — fall back to barType.
     local displayedSet = {}
-    local blizzName = BLIZZ_CDM_FRAMES[barKey]
+    local function ScanViewerIntoDisplayedSet(viewerName)
+        local vf = _G[viewerName]
+        if not vf then return end
+        for i = 1, vf:GetNumChildren() do
+            local child = select(i, vf:GetChildren())
+            if child then
+                local cdID = child.cooldownID
+                if not cdID and child.cooldownInfo then cdID = child.cooldownInfo.cooldownID end
+                if cdID then displayedSet[cdID] = true end
+            end
+        end
+    end
+    local blizzName = BLIZZ_CDM_FRAMES[barKey] or BLIZZ_CDM_FRAMES[barType or ""]
     if blizzName then
-        local blizzFrame = _G[blizzName]
-        if blizzFrame then
-            for i = 1, blizzFrame:GetNumChildren() do
-                local child = select(i, blizzFrame:GetChildren())
-                if child then
-                    local cdID = child.cooldownID
-                    if not cdID and child.cooldownInfo then
-                        cdID = child.cooldownInfo.cooldownID
-                    end
-                    if cdID then displayedSet[cdID] = true end
-                end
+        ScanViewerIntoDisplayedSet(blizzName)
+    else
+        -- Scan all viewers that match the resolved categories
+        for _, cat in ipairs(cats) do
+            if cat == 0 then ScanViewerIntoDisplayedSet("EssentialCooldownViewer")
+            elseif cat == 1 then ScanViewerIntoDisplayedSet("UtilityCooldownViewer")
+            elseif cat == 2 then ScanViewerIntoDisplayedSet("BuffIconCooldownViewer")
+            elseif cat == 3 then ScanViewerIntoDisplayedSet("BuffBarCooldownViewer")
             end
         end
     end
@@ -4446,7 +4597,18 @@ function ns.RemoveTrackedSpell(barKey, idx)
                 local tracked = b.trackedSpells or {}
                 local extras  = b.extraSpells or {}
                 if idx >= 1 and idx <= #tracked then
+                    local cdID = tracked[idx]
                     table.remove(tracked, idx)
+                    -- Persist this removal as a spellID so it survives reload/relog.
+                    if cdID then
+                        local info = C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCooldownInfo
+                            and C_CooldownViewer.GetCooldownViewerCooldownInfo(cdID)
+                        local sid = info and (info.overrideSpellID or info.spellID)
+                        if sid then
+                            if not b.removedSpells then b.removedSpells = {} end
+                            b.removedSpells[sid] = true
+                        end
+                    end
                     local frame = cdmBarFrames[barKey]
                     if frame then frame._blizzCache = nil; frame._prevVisibleCount = nil end
                     return true
@@ -4970,6 +5132,9 @@ function ECME:OnEnable()
     -- Proc glow hooks (ShowAlert/HideAlert on Blizzard CDM children)
     InstallProcGlowHooks()
     C_Timer.After(1, InstallProcGlowHooks)
+
+    -- Build spellID -> cooldownID map after CDM viewer has populated
+    C_Timer.After(1.5, RebuildSpellToCooldownID)
 end
 
 function ECME:OnCDMFirstLogin()
@@ -4985,8 +5150,10 @@ function ECME:CDMFinishSetup()
 
     -- Re-snapshot default bars after a delay to ensure Blizzard's CDM viewer
     -- has fully populated with the correct children for the current talents.
-    -- Always re-snapshots (clears trackedSpells) so stale cdIDs from a fast
-    -- initial snapshot don't persist if Blizzard updates children after us.
+    -- Re-snapshots main bars on login to pick up any new Blizzard CDM children
+    -- that weren't present during the initial fast snapshot. Wipes trackedSpells
+    -- so SnapshotBlizzardCDM re-reads from Blizzard; removedSpells filter is
+    -- re-applied during the snapshot so user removals are preserved.
     local function ForceResnapshotMainBars()
         local p = ECME.db.profile
         if not p or not p.cdmBars then return end
@@ -5175,6 +5342,8 @@ eventFrame:SetScript("OnEvent", function(_, event, unit, updateInfo)
             _specValidated = true
             C_Timer.After(0.5, function() BuildAllCDMBars() end)
         end
+        -- Rebuild spellID -> cooldownID map after spec change (new talents may change IDs)
+        C_Timer.After(1.5, RebuildSpellToCooldownID)
     end
     if event == "UNIT_AURA" and unit == "player" then
         -- Throttle: buff bars only need ~5fps refresh, not every aura event
@@ -5208,6 +5377,45 @@ end
 --  /cdmstacks debug — dumps stack count data for all visible CDM icons
 -------------------------------------------------------------------------------
 SLASH_CDMSTACKS1 = "/cdmstacks"
+
+-------------------------------------------------------------------------------
+--  /cdmcustom — debug active state detection for custom bar spells
+-------------------------------------------------------------------------------
+SLASH_CDMCUSTOM1 = "/cdmcustom"
+SlashCmdList.CDMCUSTOM = function()
+    local p = function(...) print("|cff00ff99[CDM Custom]|r", ...) end
+    p("=== _spellToCooldownID map (" .. (function() local n=0; for _ in pairs(_spellToCooldownID) do n=n+1 end; return n end)() .. " entries) ===")
+    for sid, cdID in pairs(_spellToCooldownID) do
+        local name = C_Spell.GetSpellName and C_Spell.GetSpellName(sid) or "?"
+        p("  spellID="..sid.." ("..name..") -> cooldownID="..tostring(cdID))
+    end
+    p("=== Custom bar spells ===")
+    local profile = ECME.db and ECME.db.profile
+    if not profile or not profile.cdmBars then p("No profile"); return end
+    for _, barData in ipairs(profile.cdmBars.bars) do
+        if barData.customSpells and #barData.customSpells > 0 then
+            p("Bar: "..tostring(barData.key))
+            for _, sid in ipairs(barData.customSpells) do
+                if sid and sid > 0 then
+                    local name = C_Spell.GetSpellName and C_Spell.GetSpellName(sid) or "?"
+                    local cdID = _spellToCooldownID[sid]
+                    local child = cdID and FindCDMChildByCooldownID(cdID)
+                    local inAllCache = _tickBlizzAllChildCache[sid] ~= nil
+                    local inActiveCache = _tickBlizzActiveCache[sid] ~= nil
+                    local wasAura = child and child.wasSetFromAura
+                    local auraID = child and child.auraInstanceID
+                    p("  sid="..sid.." ("..name..")"
+                        .." cdID="..tostring(cdID)
+                        .." child="..(child and "YES" or "NO")
+                        .." allCache="..(inAllCache and "YES" or "NO")
+                        .." activeCache="..(inActiveCache and "YES" or "NO")
+                        .." wasAura="..(wasAura and "YES" or "NO")
+                        .." auraID="..(auraID and tostring(auraID) or "nil"))
+                end
+            end
+        end
+    end
+end
 
 SLASH_CDMDEBUG1 = "/cdmdebug"
 SlashCmdList.CDMDEBUG = function()

@@ -32,6 +32,13 @@ initFrame:SetScript("OnEvent", function(self)
 
     if not EllesmereUI or not EllesmereUI.RegisterModule then return end
 
+    local function GetBasicsOptOutline()
+        return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or ""
+    end
+    local function GetBasicsOptUseShadow()
+        return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+    end
+
     ---------------------------------------------------------------------------
     --  DB helpers
     ---------------------------------------------------------------------------
@@ -275,8 +282,8 @@ initFrame:SetScript("OnEvent", function(self)
         do
             local info = parent:CreateFontString(nil, "OVERLAY")
             local fontPath = EllesmereUI.EXPRESSWAY or "Fonts\\FRIZQT__.TTF"
-            info:SetFont(fontPath, 11, "")
-            info:SetShadowOffset(1, -1)
+            info:SetFont(fontPath, 11, GetBasicsOptOutline())
+            if GetBasicsOptUseShadow() then info:SetShadowOffset(1, -1) else info:SetShadowOffset(0, 0) end
             info:SetPoint("TOPLEFT", parent, "TOPLEFT", 20, y)
             info:SetWidth(parent:GetWidth() - 40)
             info:SetJustifyH("LEFT")

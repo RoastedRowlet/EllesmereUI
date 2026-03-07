@@ -1032,20 +1032,23 @@ function EllesmereUI.GetFontsDB()
     if not EllesmereUIDB then EllesmereUIDB = {} end
     if not EllesmereUIDB.fonts then
         EllesmereUIDB.fonts = {
-            globalEnabled = true,
-            global        = "Expressway",
-            actionBars    = "Expressway",
-            nameplates    = "Expressway",
-            unitFrames    = "Expressway",
-            cdm           = "Expressway",
-            resourceBars  = "Expressway",
-            auraBuff      = "Expressway",
-            raidFrames    = "Expressway",
-            minimapChat   = "Expressway",
-            extras        = "Expressway",
+            global      = "Expressway",
+            outlineMode = "shadow",
         }
     end
-    return EllesmereUIDB.fonts
+    -- Migrate legacy per-addon keys (no longer used)
+    local f = EllesmereUIDB.fonts
+    f.globalEnabled = nil
+    f.actionBars    = nil
+    f.nameplates    = nil
+    f.unitFrames    = nil
+    f.cdm           = nil
+    f.resourceBars  = nil
+    f.auraBuff      = nil
+    f.raidFrames    = nil
+    f.minimapChat   = nil
+    f.extras        = nil
+    return f
 end
 
 -- Resolve a font name to a full file path for a given addon
@@ -1064,26 +1067,38 @@ local function ResolveFontName(fontName)
 end
 EllesmereUI.ResolveFontName = ResolveFontName
 
--- Get the resolved font path for an addon key
--- addonKey: "actionBars", "nameplates", "unitFrames", "cdm", "resourceBars", "auraBuff", "raidFrames", "minimapChat"
+-- Get the resolved font path for an addon key (addonKey is ignored — always uses global font)
 function EllesmereUI.GetFontPath(addonKey)
     local db = EllesmereUI.GetFontsDB()
-    local fontName
-    if db.globalEnabled then
-        fontName = db.global or "Expressway"
-    else
-        fontName = db[addonKey] or "Expressway"
-    end
-    return ResolveFontName(fontName)
+    return ResolveFontName(db.global or "Expressway")
 end
 
--- Get the font name (not path) for an addon key
+-- Get the font name (not path) for an addon key (addonKey is ignored — always uses global font)
 function EllesmereUI.GetFontName(addonKey)
     local db = EllesmereUI.GetFontsDB()
-    if db.globalEnabled then
-        return db.global or "Expressway"
+    return db.global or "Expressway"
+end
+
+-- Get the WoW font flag string for the current global outline mode.
+-- Returns: "OUTLINE", "THICKOUTLINE", or "" (none/shadow — caller should set shadow offset)
+function EllesmereUI.GetFontOutlineFlag()
+    local db = EllesmereUI.GetFontsDB()
+    local mode = db.outlineMode or "shadow"
+    if mode == "outline" then
+        return "OUTLINE"
+    elseif mode == "thick" then
+        return "THICKOUTLINE"
+    else
+        return ""
     end
-    return db[addonKey] or "Expressway"
+end
+
+-- Returns true when the current outline mode uses drop shadow instead of outline.
+-- Callers that set SetShadowOffset should check this to decide whether to show shadow.
+function EllesmereUI.GetFontUseShadow()
+    local db = EllesmereUI.GetFontsDB()
+    local mode = db.outlineMode or "shadow"
+    return mode == "none" or mode == "shadow"
 end
 
 -- Get class color (custom or default)
@@ -2740,6 +2755,13 @@ local function CreateMainFrame()
                 end
                 return
             end
+            -- Show tooltip for disabled (not enabled) addons
+            if self._notEnabled then
+                if EllesmereUI.ShowWidgetTooltip then
+                    EllesmereUI.ShowWidgetTooltip(self, "Enable via Blizzard Addons List")
+                end
+                return
+            end
             hlTex:SetAlpha(0.06)
             if activeModule ~= self._folder then
                 self._hoverGlow:Show()
@@ -2754,6 +2776,7 @@ local function CreateMainFrame()
         btn:SetScript("OnLeave", function(self)
             if EllesmereUI.HideWidgetTooltip then EllesmereUI.HideWidgetTooltip() end
             if self._comingSoon then return end
+            if self._notEnabled then return end
             hlTex:SetAlpha(0)
             self._hoverGlow:Hide()
             self._hoverIndicator:Hide()
@@ -2767,10 +2790,9 @@ local function CreateMainFrame()
         end)
         btn:SetScript("OnClick", function(self)
             if self._comingSoon then return end
+            if self._notEnabled then return end
             if self._loaded and modules[self._folder] then
                 EllesmereUI:SelectModule(self._folder)
-            elseif not self._loaded or not modules[self._folder] then
-                EllesmereUI:SelectUninstalledModule(self._folder)
             end
         end)
 
@@ -3481,7 +3503,7 @@ local function CreateMainFrame()
         ApplyContentLayout()
     end
 
-    -- Expose cache functions for SelectPage / SelectUninstalledModule (outside CreateMainFrame scope)
+    -- Expose cache functions for SelectPage (outside CreateMainFrame scope)
     function EllesmereUI:SaveContentHeaderToCache(cacheKey)
         return SaveContentHeaderToCache(cacheKey)
     end
@@ -4719,215 +4741,6 @@ function EllesmereUI:SelectModule(folderName)
     end
 end
 
-function EllesmereUI:SelectUninstalledModule(folderName)
-    -- Save old page's state before switching
-    if activePage and activeModule then
-        local oldKey = activeModule .. "::" .. activePage
-        if _pageCache[oldKey] then
-            local rl = _pageCache[oldKey].refreshList
-            if not rl then rl = {}; _pageCache[oldKey].refreshList = rl end
-            for i = #rl, 1, -1 do rl[i] = nil end
-            for i = 1, #_widgetRefreshList do
-                rl[i] = _widgetRefreshList[i]
-            end
-        end
-        EllesmereUI:SaveContentHeaderToCache(oldKey)
-    end
-
-    -- Find display name and search name from roster
-    local displayName = folderName
-    local searchName = folderName
-    for _, info in ipairs(ADDON_ROSTER) do
-        if info.folder == folderName then
-            displayName = info.display
-            searchName = info.search_name or ("Ellesmere's " .. info.display)
-            break
-        end
-    end
-
-    activeModule = folderName
-    UpdateSidebarHighlight(folderName)
-    headerFrame._title:SetText(displayName)
-    headerFrame._desc:SetText("This addon is not currently installed or enabled.")
-    BuildTabs({ "Install" })
-    activePage = "Install"
-    UpdateTabHighlight("Install")
-
-    -- Clear content without orphaning cached page wrappers.
-    -- ClearContent() uses SetParent(nil) which corrupts the page cache;
-    -- instead, just hide everything and clear supplementary state.
-    -- Content header was already saved to cache above, so just hide it.
-    ClearWidgetRefreshList()
-    if EllesmereUI.HideContentHeader then
-        EllesmereUI:HideContentHeader()
-    elseif EllesmereUI.ClearContentHeader then
-        EllesmereUI:ClearContentHeader()
-    end
-    ResetRowCounters()
-    if EllesmereUI._copyPopup then EllesmereUI._copyPopup:Hide() end
-    if EllesmereUI._copyBackdrop then EllesmereUI._copyBackdrop:Hide() end
-    HideAllChildren(scrollChild)
-
-    -- Build install page content
-    local W = EllesmereUI.Widgets
-    local y = 0
-    local _, h
-
-    _, h = W:SectionHeader(contentFrame, "This addon is not currently installed or enabled", y);  y = y - h
-
-    -- Install instructions text with colored addon name
-    -- "Install by searching for " .. green name .. " in your favorite..."
-    -- Single wrapping FontString with inline color for the green addon name
-    local textY = y - 14
-    local greenHex = string.format("%02x%02x%02x", 
-        math.floor(ELLESMERE_GREEN.r * 255 + 0.5), 
-        math.floor(ELLESMERE_GREEN.g * 255 + 0.5), 
-        math.floor(ELLESMERE_GREEN.b * 255 + 0.5))
-    local installText = MakeFont(contentFrame, 16, nil, 1, 1, 1, 1)
-    installText:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", CONTENT_PAD + 10, textY)
-    installText:SetWidth(900 - 20)
-    installText:SetJustifyH("LEFT")
-    installText:SetWordWrap(true)
-    installText:SetSpacing(6)
-    installText:SetText("Install by searching for |cff" .. greenHex .. searchName .. "|r in your favorite WoW Addon manager: Curseforge, WoWup or Wago")
-
-    -- Invisible clickable name overlay -- positioned on top of the green text
-    -- We create a separate green-only FontString just to measure its width for the button
-    local nameText = MakeFont(contentFrame, 18, nil, ELLESMERE_GREEN.r, ELLESMERE_GREEN.g, ELLESMERE_GREEN.b)
-    nameText:SetText(searchName)
-    nameText:SetAlpha(0)  -- invisible, just for measuring and anchor
-
-    -- Measure prefix width to position the clickable area
-    local prefixMeasure = MakeFont(contentFrame, 18, nil, 1, 1, 1)
-    prefixMeasure:SetText("Install by searching for ")
-    local prefixW = prefixMeasure:GetStringWidth() or 200
-    prefixMeasure:SetAlpha(0)
-
-    local nameW = nameText:GetStringWidth() or 100
-
-    local nameBtn = CreateFrame("Button", nil, contentFrame)
-    nameBtn:SetSize(nameW, 22)
-    nameBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", CONTENT_PAD + prefixW - 12, textY + 3)
-    nameBtn:SetFrameLevel(contentFrame:GetFrameLevel() + 5)
-    nameBtn:SetScript("OnEnter", function()
-        installText:SetText("Install by searching for |cffffffff" .. searchName .. "|r in your favorite WoW Addon manager: Curseforge, WoWup or Wago")
-    end)
-    nameBtn:SetScript("OnLeave", function()
-        installText:SetText("Install by searching for |cff" .. greenHex .. searchName .. "|r in your favorite WoW Addon manager: Curseforge, WoWup or Wago")
-    end)
-
-    -- Reusable copy-to-clipboard popup
-    local copyPopup, copyBackdrop
-    local function HideCopyPopup()
-        if copyPopup then copyPopup:Hide() end
-        if copyBackdrop then copyBackdrop:Hide() end
-    end
-    local function DoCopyToClipboard()
-        -- Create the popup once, reuse it
-        if not copyPopup then
-            -- Fullscreen invisible backdrop to catch outside clicks
-            copyBackdrop = CreateFrame("Button", nil, UIParent)
-            copyBackdrop:SetFrameStrata("DIALOG")
-            copyBackdrop:SetFrameLevel(499)
-            copyBackdrop:SetAllPoints(UIParent)
-            local bdTex = copyBackdrop:CreateTexture(nil, "BACKGROUND")
-            bdTex:SetAllPoints()
-            bdTex:SetColorTexture(0, 0, 0, 0.20)
-            -- Fade-in animation
-            local fadeIn = copyBackdrop:CreateAnimationGroup()
-            fadeIn:SetToFinalAlpha(true)
-            local alpha = fadeIn:CreateAnimation("Alpha")
-            alpha:SetFromAlpha(0)
-            alpha:SetToAlpha(1)
-            alpha:SetDuration(0.2)
-            copyBackdrop._fadeIn = fadeIn
-            copyBackdrop:RegisterForClicks("AnyUp")
-            copyBackdrop:SetScript("OnClick", HideCopyPopup)
-            copyBackdrop:Hide()
-
-            copyPopup = CreateFrame("Frame", nil, UIParent)
-            copyPopup:SetFrameStrata("DIALOG")
-            copyPopup:SetFrameLevel(500)
-            copyPopup:SetSize(340, 72)
-            local popupFade = copyPopup:CreateAnimationGroup()
-            popupFade:SetToFinalAlpha(true)
-            local popupAlpha = popupFade:CreateAnimation("Alpha")
-            popupAlpha:SetFromAlpha(0)
-            popupAlpha:SetToAlpha(1)
-            popupAlpha:SetDuration(0.2)
-            copyPopup._fadeIn = popupFade
-
-            local bg = SolidTex(copyPopup, "BACKGROUND", DARK_BG.r, DARK_BG.g, DARK_BG.b, 0.97)
-            bg:SetAllPoints()
-            MakeBorder(copyPopup, BORDER_COLOR.r, BORDER_COLOR.g, BORDER_COLOR.b, 0.15)
-
-            local hint = MakeFont(copyPopup, 11, nil, TEXT_SECTION.r, TEXT_SECTION.g, TEXT_SECTION.b, TEXT_SECTION.a)
-            hint:SetPoint("TOP", copyPopup, "TOP", 0, -10)
-            hint:SetText("Press Ctrl+C to copy, then Escape to close")
-
-            local eb = CreateFrame("EditBox", nil, copyPopup)
-            eb:SetSize(300, 26)
-            eb:SetPoint("TOP", hint, "BOTTOM", 0, -8)
-            eb:SetFontObject(GameFontHighlight)
-            eb:SetAutoFocus(false)
-            eb:SetJustifyH("CENTER")
-
-            local ebBg = SolidTex(eb, "BACKGROUND", 0.10, 0.12, 0.16, 1)
-            ebBg:SetPoint("TOPLEFT", -6, 4)
-            ebBg:SetPoint("BOTTOMRIGHT", 6, -4)
-            MakeBorder(eb, BORDER_COLOR.r, BORDER_COLOR.g, BORDER_COLOR.b, 0.02)
-
-            eb:SetScript("OnEscapePressed", function(self)
-                self:ClearFocus()
-                HideCopyPopup()
-            end)
-            -- Re-highlight text if user clicks inside the edit box
-            eb:SetScript("OnMouseUp", function(self)
-                self:HighlightText()
-            end)
-
-            -- Clicking the popup background itself (not the editbox) re-focuses and re-highlights
-            copyPopup:EnableMouse(true)
-            copyPopup:SetScript("OnMouseDown", function()
-                copyPopup._eb:SetFocus()
-                copyPopup._eb:HighlightText()
-            end)
-
-            copyPopup._eb = eb
-            EllesmereUI._copyPopup = copyPopup
-            EllesmereUI._copyBackdrop = copyBackdrop
-        end
-
-        copyPopup._eb:SetText(searchName)
-        copyPopup:ClearAllPoints()
-        copyPopup:SetPoint("BOTTOM", nameBtn, "TOP", 0, 8)
-        copyBackdrop:SetAlpha(0)
-        copyBackdrop:Show()
-        copyBackdrop._fadeIn:Play()
-        copyPopup:SetAlpha(0)
-        copyPopup:Show()
-        copyPopup._fadeIn:Play()
-        copyPopup._eb:SetFocus()
-        copyPopup._eb:HighlightText()
-    end
-
-    nameBtn:SetScript("OnClick", function() DoCopyToClipboard() end)
-
-    -- Account for text wrapping height
-    local textHeight = installText:GetStringHeight() or 22
-    y = y - math.max(50, textHeight + 20)
-
-    -- Cap content height to visible area so install tab never scrolls
-    local visibleH = scrollFrame:GetHeight()
-    contentFrame:SetHeight(math.min(math.abs(y) + 30, visibleH))
-    if scrollFrame and scrollFrame.SetVerticalScroll then
-        scrollTarget = 0
-        isSmoothing = false
-        if smoothFrame then smoothFrame:Hide() end
-        scrollFrame:SetVerticalScroll(0)
-    end
-end
-
 -------------------------------------------------------------------------------
 --  Show / Hide / Toggle
 -------------------------------------------------------------------------------
@@ -4952,43 +4765,63 @@ local function RefreshSidebarStates()
 
     local firstLoaded = nil
 
-    for rowIndex, info in ipairs(ADDON_ROSTER) do
+    -- Two-pass: enabled addons first (roster order), disabled addons after
+    local enabledList = {}
+    local disabledList = {}
+    for _, info in ipairs(ADDON_ROSTER) do
+        local loaded = info.alwaysLoaded or IsAddonLoaded(info.folder)
+        if loaded then
+            enabledList[#enabledList + 1] = info
+        else
+            disabledList[#disabledList + 1] = info
+        end
+    end
+
+    local rowIndex = 0
+    for _, info in ipairs(enabledList) do
+        rowIndex = rowIndex + 1
         local folder = info.folder
         local btn = sidebarButtons[folder]
         if not btn then break end
-        -- Reposition button based on roster order
         btn:ClearAllPoints()
         btn:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, _sidebarAddonNavTop - (rowIndex - 1) * _sidebarNavRowH)
-        local loaded = info.alwaysLoaded or IsAddonLoaded(folder)
-        btn._loaded = loaded
-        if loaded then
-            btn._dlIcon:Hide()
-            if folder == activeModule then
-                btn._label:SetTextColor(NAV_SELECTED_TEXT.r, NAV_SELECTED_TEXT.g, NAV_SELECTED_TEXT.b, NAV_SELECTED_TEXT.a)
-                btn._icon:SetTexture(btn._iconOff)
-                btn._icon:SetDesaturated(false)
-                btn._icon:SetAlpha(NAV_SELECTED_ICON_A)
-                btn._iconGlow:Show()
-            else
-                btn._label:SetTextColor(NAV_ENABLED_TEXT.r, NAV_ENABLED_TEXT.g, NAV_ENABLED_TEXT.b, NAV_ENABLED_TEXT.a)
-                btn._icon:SetTexture(btn._iconOff)
-                btn._icon:SetDesaturated(false)
-                btn._icon:SetAlpha(NAV_ENABLED_ICON_A)
-                btn._iconGlow:Hide()
-            end
-            if not firstLoaded then firstLoaded = folder end
-        else
-            btn._dlIcon:Show()
-            btn._label:SetTextColor(NAV_DISABLED_TEXT.r, NAV_DISABLED_TEXT.g, NAV_DISABLED_TEXT.b, NAV_DISABLED_TEXT.a)
+        btn._loaded = true
+        btn._notEnabled = false
+        btn._dlIcon:Hide()
+        if folder == activeModule then
+            btn._label:SetTextColor(NAV_SELECTED_TEXT.r, NAV_SELECTED_TEXT.g, NAV_SELECTED_TEXT.b, NAV_SELECTED_TEXT.a)
             btn._icon:SetTexture(btn._iconOff)
-            btn._icon:SetDesaturated(true)
-            btn._icon:SetAlpha(NAV_DISABLED_ICON_A)
+            btn._icon:SetDesaturated(false)
+            btn._icon:SetAlpha(NAV_SELECTED_ICON_A)
+            btn._iconGlow:Show()
+        else
+            btn._label:SetTextColor(NAV_ENABLED_TEXT.r, NAV_ENABLED_TEXT.g, NAV_ENABLED_TEXT.b, NAV_ENABLED_TEXT.a)
+            btn._icon:SetTexture(btn._iconOff)
+            btn._icon:SetDesaturated(false)
+            btn._icon:SetAlpha(NAV_ENABLED_ICON_A)
             btn._iconGlow:Hide()
-            btn._indicator:Hide()
-            btn._glow:Hide()
-            btn._glowTop:Hide()
-            btn._glowBot:Hide()
         end
+        if not firstLoaded then firstLoaded = folder end
+    end
+    for _, info in ipairs(disabledList) do
+        rowIndex = rowIndex + 1
+        local folder = info.folder
+        local btn = sidebarButtons[folder]
+        if not btn then break end
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, _sidebarAddonNavTop - (rowIndex - 1) * _sidebarNavRowH)
+        btn._loaded = false
+        btn._notEnabled = true
+        btn._dlIcon:Hide()
+        btn._label:SetTextColor(NAV_DISABLED_TEXT.r, NAV_DISABLED_TEXT.g, NAV_DISABLED_TEXT.b, NAV_DISABLED_TEXT.a)
+        btn._icon:SetTexture(btn._iconOff)
+        btn._icon:SetDesaturated(true)
+        btn._icon:SetAlpha(NAV_DISABLED_ICON_A)
+        btn._iconGlow:Hide()
+        btn._indicator:Hide()
+        btn._glow:Hide()
+        btn._glowTop:Hide()
+        btn._glowBot:Hide()
     end
     -- Default to Global Settings if no module is active
     if not activeModule then
@@ -5174,7 +5007,7 @@ end
 -------------------------------------------------------------------------------
 --  Slash commands
 -------------------------------------------------------------------------------
-EllesmereUI.VERSION = "3.2.7"
+EllesmereUI.VERSION = "3.3.0"
 
 -- Register this addon's version into a shared global table (taint-free at load time)
 if not _G._EUI_AddonVersions then _G._EUI_AddonVersions = {} end
@@ -5421,8 +5254,6 @@ function EllesmereUI:ShowModule(folderName)
     ShowSidebarUnlockTip()
     if modules[folderName] then
         self:SelectModule(folderName)
-    elseif not modules[folderName] then
-        self:SelectUninstalledModule(folderName)
     end
 end
 

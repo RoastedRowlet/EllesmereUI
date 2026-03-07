@@ -17,6 +17,9 @@ ns.EAB = EAB
 
 local PP = EllesmereUI.PP
 
+local function GetEABOutline() return EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag() or "" end
+local function GetEABUseShadow() return EllesmereUI.GetFontUseShadow and EllesmereUI.GetFontUseShadow() or true end
+
 -------------------------------------------------------------------------------
 --  Upvalues
 -------------------------------------------------------------------------------
@@ -111,6 +114,12 @@ ns.EXTRA_BARS          = EXTRA_BARS
 local MEDIA_DIR = "Interface\\AddOns\\EllesmereUIActionBars\\Media\\"
 local FONT_PATH = (EllesmereUI and EllesmereUI.GetFontPath and EllesmereUI.GetFontPath("actionBars"))
     or "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.TTF"
+local function GetEABOutline()
+    return (EllesmereUI and EllesmereUI.GetFontOutlineFlag and EllesmereUI.GetFontOutlineFlag()) or "OUTLINE"
+end
+local function GetEABUseShadow()
+    return not EllesmereUI or not EllesmereUI.GetFontUseShadow or EllesmereUI.GetFontUseShadow()
+end
 local HIGHLIGHT_TEXTURES = {
     MEDIA_DIR .. "highlight-2.png",
     MEDIA_DIR .. "highlight-3.png",
@@ -2158,7 +2167,8 @@ function EAB:ApplyFontsForBar(barKey)
                 if text == RANGE_INDICATOR or text == "\226\128\162" then text = "" end
                 hk:SetText(text)
                 hk:Show()
-                hk:SetFont(fontPath, kbSize, "OUTLINE")
+                hk:SetFont(fontPath, kbSize, GetEABOutline())
+                if GetEABUseShadow() then hk:SetShadowOffset(1, -1) else hk:SetShadowOffset(0, 0) end
                 hk:SetTextColor(kbColor.r, kbColor.g, kbColor.b)
                 hk:ClearAllPoints()
                 hk:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -1 + kbOX, -3 + kbOY)
@@ -2170,7 +2180,8 @@ function EAB:ApplyFontsForBar(barKey)
         -- Count / charges text
         local ct = btn.Count
         if ct then
-            ct:SetFont(fontPath, ctSize, "OUTLINE")
+            ct:SetFont(fontPath, ctSize, GetEABOutline())
+            if GetEABUseShadow() then ct:SetShadowOffset(1, -1) else ct:SetShadowOffset(0, 0) end
             ct:SetTextColor(ctColor.r, ctColor.g, ctColor.b)
             ct:ClearAllPoints()
             ct:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -1 + ctOX, 4 + ctOY)
@@ -4516,8 +4527,8 @@ local function CreateDataBarFrame(barKey, updateFunc)
     if PP then PP.DisablePixelSnap(bar:GetStatusBarTexture()) end
 
     local text = bar:CreateFontString(nil, "OVERLAY")
-    text:SetFont(FONT_PATH, 9, "SHADOW")
-    text:SetShadowOffset(1, -1)
+    text:SetFont(FONT_PATH, 9, GetEABOutline())
+    if GetEABUseShadow() then text:SetShadowOffset(1, -1) end
     text:SetPoint("CENTER")
     text:SetTextColor(1, 1, 1, 1)
 

@@ -159,7 +159,7 @@ initFrame:SetScript("OnEvent", function(self)
             local editBox = CreateFrame("EditBox", nil, sc)
             editBox:SetMultiLine(true)
             editBox:SetAutoFocus(false)
-            editBox:SetFont(FONT, 12, "")
+            editBox:SetFont(FONT, 12, EllesmereUI.GetFontOutlineFlag())
             editBox:SetTextColor(1, 1, 1, 0.75)
             editBox:SetAllPoints(sc)
             editBox:SetScript("OnEscapePressed", function(self)
@@ -609,7 +609,7 @@ initFrame:SetScript("OnEvent", function(self)
             infoBtn:SetFrameLevel(gfxFrame:GetFrameLevel() + 1)
             local EG = EllesmereUI.ELLESMERE_GREEN
             local infoFS = infoBtn:CreateFontString(nil, "OVERLAY")
-            infoFS:SetFont(EllesmereUI.EXPRESSWAY, 12, "")
+            infoFS:SetFont(EllesmereUI.EXPRESSWAY, 12, EllesmereUI.GetFontOutlineFlag())
             infoFS:SetTextColor(EG.r, EG.g, EG.b, 0.70)
             infoFS:SetText("More Information")
             infoFS:SetPoint("CENTER")
@@ -745,7 +745,19 @@ initFrame:SetScript("OnEvent", function(self)
                     end)
                 end
               end },
-            { type="label", text="" });  y = y - h
+            { type="toggle", text="Show Minimap Button",
+              getValue=function()
+                return not (EllesmereUIDB and EllesmereUIDB.showMinimapButton == false)
+              end,
+              setValue=function(v)
+                if not EllesmereUIDB then EllesmereUIDB = {} end
+                EllesmereUIDB.showMinimapButton = v
+                if v then
+                    EllesmereUI.ShowMinimapButton()
+                else
+                    EllesmereUI.HideMinimapButton()
+                end
+              end });  y = y - h
 
         _, h = W:Spacer(parent, y, 20);  y = y - h
 
@@ -1631,22 +1643,6 @@ initFrame:SetScript("OnEvent", function(self)
                 EllesmereUIDB.showSpellID = v
               end });  y = y - h
 
-        _, h = W:DualRow(parent, y,
-            { type="toggle", text="Show Minimap Button",
-              getValue=function()
-                return not (EllesmereUIDB and EllesmereUIDB.showMinimapButton == false)
-              end,
-              setValue=function(v)
-                if not EllesmereUIDB then EllesmereUIDB = {} end
-                EllesmereUIDB.showMinimapButton = v
-                if v then
-                    EllesmereUI.ShowMinimapButton()
-                else
-                    EllesmereUI.HideMinimapButton()
-                end
-              end },
-            { type="label", text="" });  y = y - h
-
         _, h = W:Spacer(parent, y, 20);  y = y - h
 
         -- Reset ALL EUI Addon Settings (wide warning button)
@@ -2084,7 +2080,7 @@ initFrame:SetScript("OnEvent", function(self)
             icon:SetVertexColor(EllesmereUI.ELLESMERE_GREEN.r, EllesmereUI.ELLESMERE_GREEN.g, EllesmereUI.ELLESMERE_GREEN.b)
 
             local msg = noticeFrame:CreateFontString(nil, "OVERLAY")
-            msg:SetFont(EllesmereUI.EXPRESSWAY, 13, "")
+            msg:SetFont(EllesmereUI.EXPRESSWAY, 13, EllesmereUI.GetFontOutlineFlag())
             msg:SetTextColor(1, 1, 1, 0.75)
             msg:SetJustifyH("LEFT")
             msg:SetPoint("LEFT", icon, "RIGHT", 12, 4)
@@ -2109,10 +2105,6 @@ initFrame:SetScript("OnEvent", function(self)
             end
         end
 
-        local function IsGlobalOn()
-            return EllesmereUI.GetFontsDB().globalEnabled
-        end
-
         -- Reload popup for font changes
         local function FontReload()
             EllesmereUI:ShowConfirmPopup({
@@ -2124,12 +2116,16 @@ initFrame:SetScript("OnEvent", function(self)
             })
         end
 
-        local globalFontRow
-        globalFontRow, h = W:DualRow(parent, y,
+        local outlineModeValues = {
+            ["none"]    = { text = "Drop Shadow" },
+            ["outline"] = { text = "Outline" },
+            ["thick"]   = { text = "Thick Outline" },
+        }
+        local outlineModeOrder = { "none", "outline", "thick" }
+
+        _, h = W:DualRow(parent, y,
             { type="dropdown", text="Global Font",
               values=fontDropValues, order=fontDropOrder,
-              disabled=function() return not IsGlobalOn() end,
-              disabledTooltip="Enable the Global Font toggle to use this setting",
               getValue=function() return EllesmereUI.GetFontsDB().global or "Expressway" end,
               setValue=function(v)
                   EllesmereUI.GetFontsDB().global = v
@@ -2137,132 +2133,16 @@ initFrame:SetScript("OnEvent", function(self)
                   if rl then for i2 = 1, #rl do rl[i2]() end end
                   FontReload()
               end },
-            { type="dropdown", text="General Extras Font",
-              tooltip="Affects global settings extras like durability warning and show FPS counter",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().extras or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().extras = v; FontReload() end });  y = y - h
-
-        -- Inline toggle on the Global Font dropdown (left region)
-        do
-            local leftRgn = globalFontRow._leftRegion
-            local TOGGLE_W, TOGGLE_H = 40, 20
-            local KNOB_SZ, KNOB_PAD = 16, 3
-            local toggle = CreateFrame("Button", nil, leftRgn)
-            PP.Size(toggle, TOGGLE_W, TOGGLE_H)
-            toggle:SetPoint("RIGHT", leftRgn._control, "LEFT", -12, 0)
-            toggle:SetFrameLevel(leftRgn:GetFrameLevel() + 5)
-            leftRgn._lastInline = toggle
-
-            local tBg = toggle:CreateTexture(nil, "BACKGROUND")
-            if tBg.SetSnapToPixelGrid then tBg:SetSnapToPixelGrid(false); tBg:SetTexelSnappingBias(0) end
-            tBg:SetAllPoints()
-            local knob = toggle:CreateTexture(nil, "ARTWORK")
-            if knob.SetSnapToPixelGrid then knob:SetSnapToPixelGrid(false); knob:SetTexelSnappingBias(0) end
-            PP.Size(knob, KNOB_SZ, KNOB_SZ)
-
-            local POS_OFF = KNOB_PAD
-            local POS_ON  = TOGGLE_W - KNOB_SZ - KNOB_PAD
-            local GREEN = EllesmereUI.ELLESMERE_GREEN or { r = 0.2, g = 0.8, b = 0.4 }
-            local animProgress = IsGlobalOn() and 1 or 0
-            local animTarget   = animProgress
-
-            local function lerp2(a, b, t2) return a + (b - a) * t2 end
-            local function ApplyVisual(p)
-                knob:ClearAllPoints()
-                PP.Point(knob, "LEFT", toggle, "LEFT", lerp2(POS_OFF, POS_ON, p), 0)
-                tBg:SetColorTexture(
-                    lerp2(0.18, GREEN.r, p),
-                    lerp2(0.18, GREEN.g, p),
-                    lerp2(0.18, GREEN.b, p),
-                    lerp2(0.5, 0.9, p))
-                knob:SetColorTexture(
-                    lerp2(0.45, 1, p),
-                    lerp2(0.45, 1, p),
-                    lerp2(0.45, 1, p),
-                    lerp2(0.6, 1, p))
-            end
-            ApplyVisual(animProgress)
-
-            local ANIM_DUR = 0.075
-            local function AnimOnUpdate(self, elapsed)
-                local dir = (animTarget == 1) and 1 or -1
-                animProgress = animProgress + dir * (elapsed / ANIM_DUR)
-                if (dir == 1 and animProgress >= 1) or (dir == -1 and animProgress <= 0) then
-                    animProgress = animTarget
-                    self:SetScript("OnUpdate", nil)
-                end
-                ApplyVisual(animProgress)
-            end
-
-            toggle:SetScript("OnClick", function()
-                local v = not IsGlobalOn()
-                EllesmereUI.GetFontsDB().globalEnabled = v
-                animTarget = v and 1 or 0
-                toggle:SetScript("OnUpdate", AnimOnUpdate)
-                local rl = EllesmereUI._widgetRefreshList
-                if rl then for i2 = 1, #rl do rl[i2]() end end
-            end)
-
-            EllesmereUI.RegisterWidgetRefresh(function()
-                local v = IsGlobalOn() and 1 or 0
-                animProgress = v; animTarget = v; ApplyVisual(v)
-                toggle:SetScript("OnUpdate", nil)
-            end)
-        end
-
-        _, h = W:DualRow(parent, y,
-            { type="dropdown", text="Action Bars Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().actionBars or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().actionBars = v; FontReload() end },
-            { type="dropdown", text="Nameplates Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().nameplates or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().nameplates = v; FontReload() end });  y = y - h
-
-        _, h = W:DualRow(parent, y,
-            { type="dropdown", text="Unit Frames Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().unitFrames or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().unitFrames = v; FontReload() end },
-            { type="dropdown", text="CDM Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().cdm or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().cdm = v; FontReload() end });  y = y - h
-
-        _, h = W:DualRow(parent, y,
-            { type="dropdown", text="Resource Bars Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().resourceBars or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().resourceBars = v; FontReload() end },
-            { type="dropdown", text="AuraBuff Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().auraBuff or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().auraBuff = v; FontReload() end });  y = y - h
-
-        _, h = W:DualRow(parent, y,
-            { type="dropdown", text="Raid Frames Font",
-              values=fontDropValues, order=fontDropOrder,
-              disabled=function() return IsGlobalOn() end,
-              disabledTooltip="Disable Global Font",
-              getValue=function() return EllesmereUI.GetFontsDB().raidFrames or "Expressway" end,
-              setValue=function(v) EllesmereUI.GetFontsDB().raidFrames = v; FontReload() end },
-            nil);  y = y - h
+            { type="dropdown", text="Outline Mode",
+              tooltip="Controls the text rendering style used across all UI elements",
+              values=outlineModeValues, order=outlineModeOrder,
+              getValue=function() return EllesmereUI.GetFontsDB().outlineMode or "shadow" end,
+              setValue=function(v)
+                  EllesmereUI.GetFontsDB().outlineMode = v
+                  local rl = EllesmereUI._widgetRefreshList
+                  if rl then for i2 = 1, #rl do rl[i2]() end end
+                  FontReload()
+              end });  y = y - h
 
         return math.abs(y)
     end
@@ -2291,8 +2171,8 @@ initFrame:SetScript("OnEvent", function(self)
 
         local function MakeFS(size)
             local f = fpsFrame:CreateFontString(nil, "OVERLAY")
-            f:SetFont(FONT, size, "")
-            f:SetShadowOffset(SHADOW_X, SHADOW_Y)
+            f:SetFont(FONT, size, EllesmereUI.GetFontOutlineFlag())
+            if EllesmereUI.GetFontUseShadow() then f:SetShadowOffset(SHADOW_X, SHADOW_Y) else f:SetShadowOffset(0, 0) end
             f:SetTextColor(1, 1, 1, 1)
             return f
         end
@@ -2621,7 +2501,7 @@ initFrame:SetScript("OnEvent", function(self)
         durWarnOverlay:EnableMouse(false)
 
         local fs = durWarnOverlay:CreateFontString(nil, "OVERLAY")
-        fs:SetFont(EllesmereUI.EXPRESSWAY or "Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
+        fs:SetFont(EllesmereUI.EXPRESSWAY or "Fonts\\FRIZQT__.TTF", 18, EllesmereUI.GetFontOutlineFlag())
         fs:SetPoint("CENTER")
         fs:SetText("Low Durability")
         durWarnOverlay._text = fs
@@ -2641,7 +2521,7 @@ initFrame:SetScript("OnEvent", function(self)
 
             -- Font — pull from the global "extras" font key
             local fontPath = EllesmereUI.GetFontPath("extras")
-            fs:SetFont(fontPath, 18, "OUTLINE")
+            fs:SetFont(fontPath, 18, EllesmereUI.GetFontOutlineFlag())
 
             -- Color
             local c = EllesmereUIDB and EllesmereUIDB.durWarnColor
