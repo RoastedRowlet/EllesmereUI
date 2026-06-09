@@ -431,6 +431,7 @@ local defaults = {
         healPredOpacity  = 75,
         healPredColor    = { r = 102/255, g = 243/255, b = 102/255 },
         absorbFromRightEdge = false,
+        absorbFromLeftEdge  = false, 
 
         -- Indicators
         roleIconStyle    = "modern",  -- "none", "modern", "modernCircle", "styled", "classicCircle", "classic"
@@ -1356,7 +1357,13 @@ local function CreateAbsorbBar(button, healthBar)
     local bfFill = backfillBar:GetStatusBarTexture()
     if bfFill then bfFill:SetDrawLayer("ARTWORK", 1); bfFill:AddMaskTexture(absorbMask) end
     backfillBar:SetStatusBarColor(1, 1, 1, 0.8)
-    backfillBar:SetReverseFill(true)
+
+    if db.profile.absorbFromLeftEdge then
+        backfillBar:SetReverseFill(false)
+    else
+        backfillBar:SetReverseFill(true)
+    end
+
     backfillBar:SetPoint("TOPRIGHT", healthBar, "TOPRIGHT", 0, 0)
     backfillBar:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", 0, 0)
     backfillBar:SetWidth(healthBar:GetWidth())
@@ -1555,7 +1562,7 @@ local function UpdateAbsorb(button, unit)
         fw:Show()
     end
     -- Right-edge mode: forward bar not needed, all absorb shown via backfill
-    if s.absorbFromRightEdge and fw then fw:Hide() end
+    if (s.absorbFromRightEdge or s.absorbFromLeftEdge) and fw then fw:Hide() end
 
     -- Heal absorb: feed directly without Lua comparison
     if ha then
@@ -5773,7 +5780,7 @@ do
         healthBar = {
             "healthBarTexture", "healthBarOpacity", "healthColorMode",
             "customFillColor", "customBgColor", "bgDarkness", "smoothBars",
-            "absorbStyle", "absorbOpacity", "absorbColor", "absorbFromRightEdge",
+            "absorbStyle", "absorbOpacity", "absorbColor", "absorbFromRightEdge", "absorbFromLeftEdge",
             "healAbsorbStyle", "healAbsorbOpacity", "healAbsorbColor",
             "healPrediction", "healPredOpacity", "healPredColor",
         },
@@ -7509,7 +7516,15 @@ local function CreatePreviewFrame(index)
     local bfFill = backfillBar:GetStatusBarTexture()
     if bfFill then bfFill:SetDrawLayer("ARTWORK", 1); bfFill:AddMaskTexture(absorbMask) end
     backfillBar:SetStatusBarColor(1, 1, 1, 0.3)
-    backfillBar:SetReverseFill(true)
+    
+    if db.profile.absorbFromLeftEdge then
+        print('left')
+        backfillBar:SetReverseFill(false)
+    else
+        print('right')
+        backfillBar:SetReverseFill(true)
+    end
+
     backfillBar:SetPoint("TOPRIGHT", health, "TOPRIGHT", 0, 0)
     backfillBar:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT", 0, 0)
     backfillBar:SetWidth(health:GetWidth())
@@ -7519,20 +7534,22 @@ local function CreatePreviewFrame(index)
     backfillBar:SetMinMaxValues(0, 100)
     backfillBar:Hide()
 
-    -- Forward bar: grows into missing health from the HP edge
-    local forwardBar = CreateFrame("StatusBar", nil, missClip)
-    forwardBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
-    local fwFill = forwardBar:GetStatusBarTexture()
-    if fwFill then fwFill:SetDrawLayer("ARTWORK", 1); fwFill:AddMaskTexture(absorbMask) end
-    forwardBar:SetStatusBarColor(1, 1, 1, 0.3)
-    forwardBar:SetPoint("TOPLEFT", health:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
-    forwardBar:SetPoint("BOTTOMLEFT", health:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
-    forwardBar:SetWidth(health:GetWidth())
-    forwardBar:SetHeight(health:GetHeight())
-    -- Match backfill: absorb above heal absorb/heal pred and max health.
-    forwardBar:SetFrameLevel(health:GetFrameLevel() + 3)
-    forwardBar:SetMinMaxValues(0, 100)
-    forwardBar:Hide()
+    if not db.profile.absorbFromLeftEdge then
+        -- Forward bar: grows into missing health from the HP edge
+        local forwardBar = CreateFrame("StatusBar", nil, missClip)
+        forwardBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
+        local fwFill = forwardBar:GetStatusBarTexture()
+        if fwFill then fwFill:SetDrawLayer("ARTWORK", 1); fwFill:AddMaskTexture(absorbMask) end
+        forwardBar:SetStatusBarColor(1, 1, 1, 0.3)
+        forwardBar:SetPoint("TOPLEFT", health:GetStatusBarTexture(), "TOPRIGHT", 0, 0)
+        forwardBar:SetPoint("BOTTOMLEFT", health:GetStatusBarTexture(), "BOTTOMRIGHT", 0, 0)
+        forwardBar:SetWidth(health:GetWidth())
+        forwardBar:SetHeight(health:GetHeight())
+        -- Match backfill: absorb above heal absorb/heal pred and max health.
+        forwardBar:SetFrameLevel(health:GetFrameLevel() + 3)
+        forwardBar:SetMinMaxValues(0, 100)
+        forwardBar:Hide()
+    end
 
     -- Heal absorb bar (preview): red overlay eating into filled health from HP edge
     do

@@ -997,7 +997,24 @@ initFrame:SetScript("OnEvent", function(self)
                 rows = {
                     { type="toggle", label="Show Absorbs from Right Edge",
                       get=function() return SVal("absorbFromRightEdge", false) end,
-                      set=function(v) SSet("absorbFromRightEdge", v) end },
+                      set=function(v)
+                          if v then
+                              SSet("absorbFromRightEdge", true)
+                              SSet("absorbFromLeftEdge", false)
+                          else
+                              SSet("absorbFromRightEdge", false)
+                          end
+                      end },
+                      { type="toggle", label="Show Absorbs from Left Edge",
+                      get=function() return SVal("absorbFromLeftEdge", false) end,
+                      set=function(v)
+                          if v then
+                              SSet("absorbFromLeftEdge", true)
+                              SSet("absorbFromRightEdge", false)
+                          else
+                              SSet("absorbFromLeftEdge", false)
+                          end
+                      end },
                 },
             })
             local cogBtn = CreateFrame("Button", nil, rgn)
